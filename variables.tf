@@ -14,7 +14,7 @@ variable "availability_zone" {
 
 variable "vpc_name" {
   description = "VPC for building demos"
-  default = "vpc_database"
+  default = "vpc_db"
 }
 
 
