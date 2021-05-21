@@ -1,5 +1,6 @@
 variable "vpc_region" {
   description = "Region in which VPC needs to be created"
+  default = "us-east-1a"
 }
 
 variable "availability_zone" {
@@ -12,9 +13,11 @@ variable "availability_zone" {
 
 variable "vpc_name" {
   description = "VPC for building demos"
+  default = "vpc_database"
 }
 
 
 variable "vpc_cidr_block" {
   description = "Uber IP addressing for demo Network"
+  default = "10.10.0.0/16"
 }
