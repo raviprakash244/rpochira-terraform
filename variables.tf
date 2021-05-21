@@ -1,3 +1,12 @@
+variable "aws_access_key_id" {
+  description = "AWS access key"
+}
+
+variable "aws_secret_access_key" {
+  description = "AWS secret access key"
+}
+
+
 variable "vpc_region" {
   description = "Region in which VPC needs to be created"
   default = "us-east-1a"
