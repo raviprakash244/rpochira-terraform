@@ -1,9 +1,11 @@
 variable "aws_access_key_id" {
   description = "AWS access key"
+  default = ${aws_access_key_id}
 }
 
 variable "aws_secret_access_key" {
   description = "AWS secret access key"
+  default = ${aws_secret_access_key}
 }
 
 variable "vpc_region" {
