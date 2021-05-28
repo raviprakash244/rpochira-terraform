@@ -7,7 +7,7 @@ variable "vpc_region" {
 
 variable "vpc_name" {
   description = "VPC for building demos"
-  default = "demo_vpc_tf"
+  default = "aws_vpc_tf"
 }
 
 
