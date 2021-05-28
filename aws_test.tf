@@ -5,7 +5,7 @@ provider "aws" {
 }
 
 # Define a vpc
-resource "aws_vpc" "vpc_name" {
+resource "aws_vpc" "${var.vpc_name}" {
   cidr_block = "${var.vpc_cidr_block}"
   tags = {
     Name = "${var.vpc_name}"
