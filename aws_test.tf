@@ -12,3 +12,16 @@ resource "aws_vpc" "${var.vpc_name}" {
   }
 }
 
+
+resource "aws_rds_cluster" "postgresql" {
+  cluster_identifier      = "aurora-cluster-demo"
+  engine                  = "aurora-postgresql"
+  availability_zones      = [ var.vpc_region ]
+  database_name           = "mydb"
+  master_username         = "rpochira"
+  master_password         = "rpochira"
+  backup_retention_period = 5
+  preferred_backup_window = "07:00-09:00"
+}
+
+

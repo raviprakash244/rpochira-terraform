@@ -1,5 +1,5 @@
 aws_access_key_id="${AWS_ACCESS_KEY_ID}"
 aws_secret_access_key="${AWS_SECRET_ACCESS_KEY}"
 vpc_region="us-east-1"
-vpc_name="demo_vpc_tf"
+vpc_name="db_vpc"
 vpc_cidr_block="10.10.0.0/16"
