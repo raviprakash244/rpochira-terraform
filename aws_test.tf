@@ -16,7 +16,6 @@
 resource "aws_rds_cluster" "postgresql" {
   cluster_identifier      = "aurora-cluster-demo"
   engine                  = "aurora-postgresql"
-  region                  = "us-east-1"
   availability_zones      = [ "us-east-1a" ]
   database_name           = "mydb"
   master_username         = "rpochira"
