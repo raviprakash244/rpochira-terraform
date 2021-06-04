@@ -1,8 +1,8 @@
 # Setup our aws provider
 
-#provider "aws" {
-#  region = "${var.vpc_region}"
-#}
+provider "aws" {
+  region = "${var.vpc_region}"
+}
 
 # Define a vpc
 #resource "aws_vpc" "${var.vpc_name}" {
