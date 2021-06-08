@@ -1,6 +1,7 @@
 # Setup our aws provider
 
 provider "aws" {
+  alias  = "postgresql1"
   region = "${var.vpc_region}"
 }
 
