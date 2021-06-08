@@ -1,8 +1,6 @@
 # Setup our aws provider
 
-provider "aws" {
-  region = "${var.vpc_region}"
-}
+provider "aws" {}
 
 
 resource "aws_rds_cluster" "aurora-cluster-demo2" {
