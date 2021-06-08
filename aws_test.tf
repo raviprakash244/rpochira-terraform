@@ -13,8 +13,8 @@ provider "aws" {
 #}
 
 
-resource "aws_rds_cluster" "postgresql" {
-  cluster_identifier      = "aurora-cluster-demo"
+resource "aws_rds_cluster" "postgresql1" {
+  cluster_identifier      = "aurora-cluster-demo1"
   engine                  = "aurora-postgresql"
   availability_zones      = [ "us-east-1a" ]
   database_name           = "mydb"
