@@ -5,10 +5,10 @@ provider "aws" {
 }
 
 
-module "rds_cluster3" {
+module ${var.cluster_name} {
   source = "./modules/aws_aurora"
 
-  cluster_name   = "testcluster3"
+  cluster_name   = var.cluster_name
 
 }
 

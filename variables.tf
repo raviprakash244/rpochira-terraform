@@ -17,3 +17,9 @@ variable "vpc_cidr_block" {
 }
 
 
+variable "cluster_name" {
+  description = "Test cluster build "
+  default     = "testcluster1"
+}
+  
+
