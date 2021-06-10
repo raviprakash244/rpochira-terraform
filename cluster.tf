@@ -5,7 +5,7 @@ provider "aws" {
 }
 
 
-module aws_aurora_db {
+module aws_aurora_db1 {
   source = "./modules/aws_aurora"
 
   cluster_name   = var.cluster_name
