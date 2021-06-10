@@ -5,7 +5,7 @@ provider "aws" {
 }
 
 
-module ${var.cluster_name} {
+module aws_aurora_db {
   source = "./modules/aws_aurora"
 
   cluster_name   = var.cluster_name
