@@ -1,12 +1,6 @@
 # Setup our aws provider
-
-provider "aws" {
-  region = "${var.vpc_region}"
-}
-
-
-resource "aws_rds_cluster" "postgresql1" {
-  cluster_identifier      = "aurora-cluster-demo1"
+resource "aws_rds_cluster" "aws_aurora" {
+  cluster_identifier      = var.cluster_name
   engine                  = "aurora-postgresql"
   availability_zones      = [ "us-east-1a" ]
   database_name           = "mydb"
@@ -16,3 +10,4 @@ resource "aws_rds_cluster" "postgresql1" {
   preferred_backup_window = "07:00-09:00"
   skip_final_snapshot     = "true"
 }
+
