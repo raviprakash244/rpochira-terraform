@@ -5,7 +5,7 @@ provider "aws" {
 }
 
 
-module "rds_cluster" {
+module "rds_cluster1" {
   source = "./modules/aws_aurora"
 
   cluster_name   = "testcluster2"
