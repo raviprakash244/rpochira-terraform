@@ -14,8 +14,6 @@ module "db" {
   password = "YourPwdShouldBeLongAndSecure!"
   port     = "3306"
 
-  iam_database_authentication_enabled = true
-
   vpc_security_group_ids = ["default"]
 
   maintenance_window = "Mon:00:00-Mon:03:00"
@@ -55,20 +53,4 @@ module "db" {
     }
   ]
 
-  options = [
-    {
-      option_name = "MARIADB_AUDIT_PLUGIN"
-
-      option_settings = [
-        {
-          name  = "SERVER_AUDIT_EVENTS"
-          value = "CONNECT"
-        },
-        {
-          name  = "SERVER_AUDIT_FILE_ROTATIONS"
-          value = "37"
-        },
-      ]
-    },
-  ]
 }
