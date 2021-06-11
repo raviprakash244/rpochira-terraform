@@ -23,7 +23,6 @@ module "db" {
   # by yourself, in case you don't want to create it automatically
   monitoring_interval = "30"
   monitoring_role_name = "MyRDSMonitoringRole"
-  create_monitoring_role = true
 
   tags = {
     Owner       = "user"
@@ -40,7 +39,6 @@ module "db" {
   major_engine_version = "5.7"
 
   # Database Deletion Protection
-  deletion_protection = true
 
   parameters = [
     {
