@@ -33,7 +33,7 @@ module "db" {
   }
 
   # DB subnet group
-  #subnet_ids = ["subnet-12345678", "subnet-87654321"]
+  subnet_ids = ["subnet-3106353f", "subnet-fe4d37a1"]
 
   # DB parameter group
   family = "mysql5.7"
