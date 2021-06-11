@@ -10,13 +10,13 @@ module "db" {
   allocated_storage = 5
 
   name     = "demodb"
-  username = "user"
-  password = "YourPwdShouldBeLongAndSecure!"
+  username = "masteruser"
+  password = "password"
   port     = "3306"
 
   iam_database_authentication_enabled = true
 
-  vpc_security_group_ids = ["default"]
+  vpc_security_group_ids = ["sg-c94374cd"]
 
   maintenance_window = "Mon:00:00-Mon:03:00"
   backup_window      = "03:00-06:00"
