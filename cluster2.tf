@@ -2,14 +2,14 @@ module "db" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 3.0"
 
-  identifier = "demodb"
+  identifier = "demodb1"
 
   engine            = "mysql"
   engine_version    = "5.7.19"
   instance_class    = "db.t2.large"
   allocated_storage = 5
 
-  name     = "demodb"
+  name     = "demodb1"
   username = "masteruser"
   password = "password"
   port     = "3306"
