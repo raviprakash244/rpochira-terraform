@@ -29,26 +29,4 @@ module "db" {
     Environment = "dev"
   }
 
-  # DB subnet group
-  #subnet_ids = ["subnet-12345678", "subnet-87654321"]
-
-  # DB parameter group
-  family = "mysql5.7"
-
-  # DB option group
-  major_engine_version = "5.7"
-
-  # Database Deletion Protection
-
-  parameters = [
-    {
-      name = "character_set_client"
-      value = "utf8mb4"
-    },
-    {
-      name = "character_set_server"
-      value = "utf8mb4"
-    }
-  ]
-
 }
