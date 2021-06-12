@@ -16,7 +16,7 @@ module "postgresql_rds" {
     auto_minor_version_upgrade = false
     multi_availability_zone = true
     storage_encrypted = false
-    subnet_group = 'default'
+    subnet_group = "default"
     parameter_group = 'default.aurora-postgresql11'
     monitoring_interval = "60"
     deletion_protection = true
