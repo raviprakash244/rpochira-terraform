@@ -17,7 +17,7 @@ module "postgresql_rds" {
     multi_availability_zone = true
     storage_encrypted = false
     subnet_group = "default"
-    parameter_group = 'default.aurora-postgresql11'
+    parameter_group = "default.aurora-postgresql11"
     monitoring_interval = "60"
     deletion_protection = true
     cloudwatch_logs_exports = ["postgresql"]
