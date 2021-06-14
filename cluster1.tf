@@ -17,7 +17,7 @@ resource "aws_rds_cluster" "aurora-cluster-demo" {
   master_username         = "rpochira"
   master_password         = "rpochira"
   backup_retention_period = 5
-  preferred_backup_window = "08:00-09:00"
+  preferred_backup_window = "09:00-10:00"
   db_subnet_group_name    = "default"
 
 }
