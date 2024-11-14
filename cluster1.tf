@@ -9,11 +9,6 @@ terraform {
   }
 }
 
-variable "subnet_ids" {
-  description = "List of Subnet IDs"
-  type        = list(string)
-}
-
 variable "subnet_name_list" {
     type    = list(string)
     default = ["subnet1", "subnet2", "subnet3", "subnet4", "subnet5", "subnet6"]
