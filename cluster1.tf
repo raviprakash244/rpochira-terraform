@@ -39,16 +39,14 @@ resource "aws_launch_template" "example" {
 #!/bin/bash
 
 yum install -y aws-cli
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+INSTANCE_ID=$$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 REGION="us-east1" 
-
-TAG_NAME="data-${INSTANCE_ID}" 
-
+TAG_NAME="data-$${INSTANCE_ID}" 
 # Add tags to the instance
 aws ec2 create-tags \
-  --resources "$INSTANCE_ID" \
-  --tags Key=Name,Value="$TAG_NAME" \
-  --region "$REGION"
+  --resources "$$INSTANCE_ID" \
+  --tags Key=Name,Value="$$TAG_NAME" \
+  --region "$$REGION"
 EOF
   )
 }
