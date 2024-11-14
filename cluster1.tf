@@ -52,11 +52,24 @@ EOF
 }
 
 
+data "aws_subnet" "subnets" { 
+    count = 3
+    filter { 
+        name   = "tag:Name"
+        values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
+    }
+}
+
+locals {
+  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
+}
+
+
 resource "aws_autoscaling_group" "couchbase_data" {
   desired_capacity     = 1                 
   max_size             = 1                 
   min_size             = 1                  
-  vpc_zone_identifier  = data.aws_subnet.subnets.ids
+  vpc_zone_identifier  = local.subnet_ids
   launch_template {
     id      = aws_launch_template.example.id
     version = "$Latest"
