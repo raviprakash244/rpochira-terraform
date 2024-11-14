@@ -14,5 +14,5 @@ data "aws_subnet" "subnets" {
         name = "tag:Name"
         values = ["*${var.subnet_name_list[(count.index%3)]}*"]
     }
-    count = local.data_instance_count
+    count = 3
 }
