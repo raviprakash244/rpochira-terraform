@@ -14,13 +14,6 @@ variable "subnet_name_list" {
     default = ["subnet1", "subnet2", "subnet3", "subnet4", "subnet5", "subnet6"]
 }
 
-data "aws_subnet" "subnets" { 
-    count = 3
-    filter { 
-        name   = "tag:Name"
-        values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
-    }
-}
 
 resource "aws_launch_template" "example" {
   name          = "couchbase-data-launch-template"
