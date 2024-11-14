@@ -9,10 +9,15 @@ terraform {
   }
 }
 
+variable "subnet_name_list" {
+    type    = list(string)
+    default = ["subnet1", "subnet2", "subnet3"]
+}
+
 data "aws_subnet" "subnets" { 
-    filter { 
-        name = "tag:Name"
-        values = ["*${var.subnet_name_list[(count.index%3)]}*"]
-    }
     count = 3
+    filter { 
+        name   = "tag:Name"
+        values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
+    }
 }
