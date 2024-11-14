@@ -11,7 +11,7 @@ terraform {
 
 variable "subnet_name_list" {
     type    = list(string)
-    default = ["subnet1", "subnet2", "subnet3"]
+    default = ["subnet1", "subnet2", "subnet3", "subnet4", "subnet5", "subnet6"]
 }
 
 data "aws_subnet" "subnets" { 
