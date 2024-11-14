@@ -21,3 +21,10 @@ data "aws_subnet" "subnets" {
         values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
     }
 }
+
+
+
+output "subnet_ids" {
+  description = "The list of subnet IDs"
+  value       = [for subnet in data.aws_subnet.subnets : subnet.id]
+}
