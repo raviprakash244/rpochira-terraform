@@ -27,11 +27,6 @@ data "aws_subnet" "subnets" {
     }
 }
 
-data "aws_subnet" "subnets" {
-  for_each = toset(var.subnet_ids)
-  id       = each.value
-}
-
 resource "aws_launch_template" "example" {
   name          = "couchbase-data-launch-template"
   image_id      = "ami-030c239b5d3296394"  
