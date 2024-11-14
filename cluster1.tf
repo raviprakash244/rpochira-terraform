@@ -107,7 +107,7 @@ resource "aws_iam_role_policy" "example_lifecycle_policy" {
     {
       "Effect": "Allow",
       "Action": "sns:Publish",
-      "Resource": "${aws_sns_topic.example_sns.arn}"
+      "Resource": "arn:aws:sns:us-east-1:911167901101:asg_launch"
     }
   ]
 }
