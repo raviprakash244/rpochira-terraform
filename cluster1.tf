@@ -9,15 +9,10 @@ terraform {
   }
 }
 
-resource "aws_rds_cluster" "aurora-cluster-demo" {
-  cluster_identifier      = "aurora-cluster-demo"
-  engine                  = "aurora-postgresql"
-  availability_zones      = [ "us-east-1a" ]
-  database_name           = "mydb"
-  master_username         = "rpochira"
-  master_password         = "rpochira"
-  backup_retention_period = 5
-  preferred_backup_window = "10:00-10:00"
-  db_subnet_group_name    = "default"
-
+data "aws_subnet" "subnets" { 
+    filter { 
+        name = "tag:Name"
+        values = ["*${var.subnet_name_list[(count.index%3)]}*"]
+    }
+    count = local.data_instance_count
 }
