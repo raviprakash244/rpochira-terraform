@@ -131,8 +131,7 @@ resource "aws_autoscaling_lifecycle_hook" "example_hook" {
   default_result         = "CONTINUE"                            
   heartbeat_timeout      = 1800                                   
 
-  # Optional: Notification settings to trigger an action (e.g., Lambda or SNS)
-  notification_target_arn = arn:aws:sns:us-east-1:911167901101:asg_launch
+  notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
   role_arn                = aws_iam_role.example_lifecycle_role.arn # IAM role for notification permissions
 }
 
