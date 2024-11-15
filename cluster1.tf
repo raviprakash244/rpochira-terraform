@@ -22,6 +22,9 @@ resource "aws_network_interface" "eni" {
   description   = "ENI for Couchbase"
 }
 
+locals {
+  eni_ids = [for i in range(length(data.aws_subnet.subnets)) : aws_network_interface.eni[i].id]
+}
 
 # Launch Template for EC2 instances
 resource "aws_launch_template" "example" {
@@ -33,7 +36,7 @@ resource "aws_launch_template" "example" {
 
   network_interfaces {
     associate_public_ip_address = false
-    network_interface_id = aws_network_interface.eni[count.index % length(var.subnet_name_list)].id
+    network_interface_id = local.eni_ids[count.index]
     device_index         = 0
   }
 
