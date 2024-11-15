@@ -18,7 +18,7 @@ variable "subnet_name_list" {
 # Launch Template for EC2 instances
 resource "aws_launch_template" "example" {
   name          = "couchbase-data-launch-template"
-  image_id      = "ami-0b7f046618c005372"  # Replace with your AMI ID
+  image_id      = "ami-030c239b5d3296394"  # Replace with your AMI ID
   instance_type = "t2.micro"                # Replace with your instance type
 
   key_name      = "terminal"               # Replace with your SSH key
