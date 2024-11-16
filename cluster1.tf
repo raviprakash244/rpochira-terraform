@@ -9,7 +9,7 @@ terraform {
 }
 
 variable "instance_count" {
-  type    = int
+  type    = number
   default = 3
 }
 
