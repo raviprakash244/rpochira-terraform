@@ -151,7 +151,3 @@ output "subnet_ids" {
   description = "The list of subnet IDs"
   value       = [for subnet in data.aws_subnet.subnets : subnet.id]
 }
-
-output "launch_template_version" {
-  value = aws_launch_template.example.latest_version
-}
