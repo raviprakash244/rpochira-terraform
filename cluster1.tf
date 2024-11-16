@@ -171,7 +171,7 @@ resource "aws_autoscaling_lifecycle_hook" "example_hook" {
   for_each = toset(local.all_subnet_ids)  # Iterate over subnets or ASGs
 
   autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
-  name                   = "asg-cbdata-lifecycle-hook-${random_string.unique.result}"
+  name                   = "asg-cbdata-lifecycle-hook-${aws_autoscaling_group.couchbase_data.name}"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
   default_result         = "CONTINUE"
   heartbeat_timeout      = 120
