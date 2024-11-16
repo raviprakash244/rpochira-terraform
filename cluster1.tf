@@ -89,7 +89,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   vpc_zone_identifier  = local.subnet_ids  
 
   launch_template {
-    id      = aws_launch_template.example[each.value].id  # Reference dynamically based on each subnet
+    id      = lookup(aws_launch_template.example, each.value).id
     version = "$Latest"
   }
 
