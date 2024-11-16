@@ -1,62 +1,62 @@
-# terraform {
-#   backend "remote" {
-#     hostname     = "app.terraform.io"
-#     organization = "rpochira"
-#     workspaces {
-#       name = "rpochira"
-#     }
-#   }
-# }
+terraform {
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "rpochira"
+    workspaces {
+      name = "rpochira"
+    }
+  }
+}
 
-# variable "instance_count" {
-#   type    = number
-#   default = 6
-# }
+variable "instance_count" {
+  type    = number
+  default = 6
+}
 
-# variable "ami_id" {
-#   type    = string
-#   default = "ami-030c239b5d3296394"
-# }
+variable "ami_id" {
+  type    = string
+  default = "ami-030c239b5d3296394"
+}
 
-# variable "security_group" {
-#   type    = string
-#   default = "sg-057749862a8753300"
-# }
+variable "security_group" {
+  type    = string
+  default = "sg-057749862a8753300"
+}
 
-# variable "instance_type" {
-#   type    = string
-#   default = "t2.micro"
-# }
+variable "instance_type" {
+  type    = string
+  default = "t2.micro"
+}
 
-# variable "subnet_name_list" {
-#   type    = list(string)
-#   default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
-# }
+variable "subnet_name_list" {
+  type    = list(string)
+  default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
+}
 
-# data "aws_subnet" "subnets" { 
-#   for_each = toset(var.subnet_name_list)
-#   filter { 
-#     name   = "tag:Name"
-#     values = ["*${each.value}*"]
-#   }
-# }
+data "aws_subnet" "subnets" { 
+  for_each = toset(var.subnet_name_list)
+  filter { 
+    name   = "tag:Name"
+    values = ["*${each.value}*"]
+  }
+}
 
-# locals {
-#   subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
-#   all_subnet_ids = [
-#     for i in range(var.instance_count) : local.subnet_ids[i % length(local.subnet_ids)]
-#   ]
-# }
+locals {
+  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
+  all_subnet_ids = [
+    for i in range(var.instance_count) : local.subnet_ids[i % length(local.subnet_ids)]
+  ]
+}
 
-# resource "aws_network_interface" "data_eni" {
-#   for_each = toset(local.all_subnet_ids)
-#   subnet_id       = each.value  
-#   security_groups = [var.security_group]
-#   tags = {
-#     Subnet               = "${each.value}"
-#     UniqueTag            = "data_${each.key}"
-#   }
-# }
+resource "aws_network_interface" "data_eni" {
+  for_each = toset(local.all_subnet_ids)
+  subnet_id       = each.value  
+  security_groups = [var.security_group]
+  tags = {
+    Subnet               = "${each.value}"
+    UniqueTag            = "data_${each.key}"
+  }
+}
 
 # resource "aws_launch_template" "couchbase_data" {
 #   name          = "couchbase-data-launch-template"
@@ -164,7 +164,7 @@
 # }
 
 
-# output "subnet_ids" {
-#   description = "The list of subnet IDs"
-#   value       = local.all_subnet_ids
-# }
+output "enis" {
+  description = "The list of subnet IDs"
+  value       = aws_network_interface.data_eni
+}
