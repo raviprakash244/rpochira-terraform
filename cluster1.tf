@@ -85,7 +85,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   desired_capacity    = var.instance_count
   max_size            = var.instance_count
   min_size            = var.instance_count
-  vpc_zone_identifier = local.subnet_ids
+  vpc_zone_identifier = local.all_subnet_ids
 
   launch_template {
     id      = aws_launch_template.couchbase_data.id 
