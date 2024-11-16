@@ -57,40 +57,38 @@ resource "aws_network_interface" "eni" {
 resource "aws_launch_template" "example" {
   for_each      = toset(local.subnet_ids)
   name          = "couchbase-data-launch-template-${each.value}"
-  image_id      = var.ami_id 
-  instance_type = var.instance_type          
-  key_name      = "terminal"                
+  image_id      = var.ami_id
+  instance_type = var.instance_type
+  key_name      = "terminal"
 
   network_interfaces {
     associate_public_ip_address = false
     security_groups             = [var.security_group]
-    network_interface_id        = aws_network_interface.eni[each.key].id  
     device_index                = 0
   }
 
   user_data = base64encode(<<EOF
 #!/bin/bash
 yum install -y aws-cli
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+INSTANCE_ID=$$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 REGION="us-east-1"  # Correct region identifier
-TAG_NAME="data-$INSTANCE_ID"
+TAG_NAME="data-$${INSTANCE_ID}"
 aws ec2 create-tags \
-  --resources "$INSTANCE_ID" \
-  --tags Key=UniqueName,Value="$TAG_NAME" \
-  --region "$REGION" >> /tmp/userdata.log 2>&1
+  --resources "$$INSTANCE_ID" \
+  --tags Key=UniqueName,Value="$$TAG_NAME" \
+  --region "$$REGION" >> /tmp/userdata.log 2>&1
 EOF
   )
 }
 
 resource "aws_autoscaling_group" "couchbase_data" {
-  for_each            = toset(local.subnet_ids)  # Iterating over the subnet IDs
-  desired_capacity    = var.instance_count
-  max_size            = var.instance_count
-  min_size            = var.instance_count
-  vpc_zone_identifier = [each.value]  # Using each.value (subnet ID) for each ASG
+  desired_capacity     = var.instance_count
+  max_size             = var.instance_count
+  min_size             = var.instance_count
+  vpc_zone_identifier  = local.subnet_ids
 
   launch_template {
-    id      = aws_launch_template.example[each.key].id  # Referencing the correct launch template
+    id      = aws_launch_template.example[each.key].id
     version = "$Latest"
   }
 
@@ -114,6 +112,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   health_check_type         = "EC2"
   health_check_grace_period = 60
 }
+
 
 
 
