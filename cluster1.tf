@@ -153,11 +153,12 @@ EOF
 }
 
 resource "aws_autoscaling_lifecycle_hook" "example_hook" {
-  autoscaling_group_name = aws_autoscaling_group.couchbase_data.name
-  name                 = "example-lifecycle-hook"
-  lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
-  default_result       = "CONTINUE"
-  heartbeat_timeout    = 120
+  for_each              = toset(local.subnet_ids)  
+  autoscaling_group_name  = aws_autoscaling_group.couchbase_data[each.key].name  
+  name                  = "example-lifecycle-hook"
+  lifecycle_transition  = "autoscaling:EC2_INSTANCE_LAUNCHING"
+  default_result        = "CONTINUE"
+  heartbeat_timeout     = 120
 
   notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
   role_arn                = aws_iam_role.example_lifecycle_role.arn
