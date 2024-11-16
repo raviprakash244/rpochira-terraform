@@ -15,19 +15,23 @@ variable "subnet_name_list" {
   default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
 }
 
-resource "aws_network_interface" "eni" {
-  count         = length(var.subnet_name_list)
-  subnet_id     = data.aws_subnet.subnets[count.index].id
-  security_groups = ["sg-057749862a8753300"] # Replace with appropriate security group ID
-  description   = "ENI for Couchbase"
+# Retrieve subnets with the specified tags
+data "aws_subnet" "subnets" { 
+  count = 3
+  filter { 
+    name   = "tag:Name"
+    values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
+  }
 }
 
+# Local variable to hold subnet IDs
 locals {
-  eni_ids = [for i in range(length(data.aws_subnet.subnets)) : aws_network_interface.eni[i].id]
+  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
 }
+
 
 # Launch Template for EC2 instances
-resource "aws_launch_template" "example" {
+resource "aws_launch_template" "`" {
   name          = "couchbase-data-launch-template"
   image_id      = "ami-030c239b5d3296394"  # Replace with your AMI ID
   instance_type = "t2.micro"                # Replace with your instance type
@@ -36,7 +40,8 @@ resource "aws_launch_template" "example" {
 
   network_interfaces {
     associate_public_ip_address = false
-    network_interface_id = local.eni_ids[count.index]
+    security_groups             = ["sg-057749862a8753300"]
+    subnet_id                   = local.subnet_ids[count.index] 
     device_index         = 0
   }
 
@@ -57,25 +62,13 @@ EOF
   )
 }
 
-# Retrieve subnets with the specified tags
-data "aws_subnet" "subnets" { 
-  count = 3
-  filter { 
-    name   = "tag:Name"
-    values = ["*${var.subnet_name_list[(count.index % 3)]}*"]
-  }
-}
 
-# Local variable to hold subnet IDs
-locals {
-  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
-}
 
 # Auto Scaling Group resource
 resource "aws_autoscaling_group" "couchbase_data" {
-  desired_capacity     = 1
-  max_size             = 1
-  min_size             = 1
+  desired_capacity     = 3
+  max_size             = 3
+  min_size             = 3
   vpc_zone_identifier  = local.subnet_ids
 
   launch_template {
