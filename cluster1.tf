@@ -45,8 +45,12 @@ data "aws_subnet" "subnets" {
 #   subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
 # }
 
-locals { 
-  subnet_ids = [
+locals {
+  # Get all subnet IDs
+  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
+
+  # Round-robin subnet IDs based on the instance count (6 in this case)
+  round_robin_subnet_ids = [
     for i in range(var.instance_count) : local.subnet_ids[i % length(local.subnet_ids)]
   ]
 }
