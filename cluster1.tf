@@ -1,59 +1,67 @@
-# terraform {
-#   backend "remote" {
-#     hostname     = "app.terraform.io"
-#     organization = "rpochira"
-#     workspaces {
-#       name = "rpochira"
-#     }
-#   }
-# }
+terraform {
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "rpochira"
+    workspaces {
+      name = "rpochira"
+    }
+  }
+}
 
-# variable "instance_count" {
-#   type    = number
-#   default = 3
-# }
+variable "instance_count" {
+  type    = number
+  default = 6
+}
 
-# variable "ami_id" {
-#   type    = string
-#   default = "ami-030c239b5d3296394"
-# }
+variable "ami_id" {
+  type    = string
+  default = "ami-030c239b5d3296394"
+}
 
-# variable "security_group" {
-#   type    = string
-#   default = "sg-057749862a8753300"
-# }
+variable "security_group" {
+  type    = string
+  default = "sg-057749862a8753300"
+}
 
-# variable "instance_type" {
-#   type    = string
-#   default = "t2.micro"
-# }
+variable "instance_type" {
+  type    = string
+  default = "t2.micro"
+}
 
-# variable "subnet_name_list" {
-#   type    = list(string)
-#   default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
-# }
+variable "subnet_name_list" {
+  type    = list(string)
+  default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
+}
 
-# data "aws_subnet" "subnets" { 
-#   for_each = toset(var.subnet_name_list)
-#   filter { 
-#     name   = "tag:Name"
-#     values = ["*${each.value}*"]
-#   }
-# }
+data "aws_subnet" "subnets" { 
+  for_each = toset(var.subnet_name_list)
+  filter { 
+    name   = "tag:Name"
+    values = ["*${each.value}*"]
+  }
+}
 
 # locals {
 #   subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
 # }
 
+locals { 
+  subnet_ids = [
+    for i in range(var.instance_count) : local.subnet_ids[i % length(local.subnet_ids)]
+  ]
+}
+
 # resource "aws_network_interface" "eni" {
 #   for_each = toset(local.subnet_ids)
-
 #   subnet_id       = each.value  
 #   security_groups = [var.security_group]
+#   tags {
+#     Subnet               = "eni-${each.value}"
+#   }
 # }
 
 # resource "aws_launch_template" "example" {
-#   for_each      = toset(local.subnet_ids)
+#   for_each      = aws_network_interface.eni
 #   name          = "couchbase-data-launch-template-${each.value}"
 #   image_id      = var.ami_id
 #   instance_type = var.instance_type
@@ -62,7 +70,7 @@
 #   network_interfaces {
 #     associate_public_ip_address = false
 #     security_groups             = [var.security_group]
-#     network_interface_id        = aws_network_interface.eni[each.value].id  # This should reference the ENI's ID only
+#     network_interface_id        = each.id
 #     device_index                = 0
 #   }
 
@@ -81,14 +89,14 @@
 # }
 
 # resource "aws_autoscaling_group" "couchbase_data" {
-#   for_each            = toset(local.subnet_ids)  # This iterates over subnet IDs
+#   for_each            = aws_launch_template.example 
 #   desired_capacity    = var.instance_count
 #   max_size            = var.instance_count
 #   min_size            = var.instance_count
 #   vpc_zone_identifier = [each.value]  # Each subnet
 
 #   launch_template {
-#     id      = aws_launch_template.example[each.value].id
+#     id      = each.value.id 
 #     version = "$Latest"
 #   }
 
@@ -162,7 +170,7 @@
 # }
 
 
-# output "subnet_ids" {
-#   description = "The list of subnet IDs"
-#   value       = [for subnet in data.aws_subnet.subnets : subnet.id]
-# }
+output "subnet_ids" {
+  description = "The list of subnet IDs"
+  value       = locals.subnet_ids
+}
