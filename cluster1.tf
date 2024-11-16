@@ -42,10 +42,8 @@ data "aws_subnet" "subnets" {
 }
 
 locals {
-  subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
-  all_subnet_ids = [
-    for i in range(var.instance_count) : local.subnet_ids[i % length(local.subnet_ids)]
-  ]
+  all_subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
+  subnet_index   = [for i in range(var.instance_count) : i % length(local.all_subnet_ids)]
 }
 
 resource "aws_network_interface" "data_eni" {
