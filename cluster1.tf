@@ -54,7 +54,7 @@ resource "aws_network_interface" "data_eni" {
   security_groups = [var.security_group]
   tags = {
     Subnet               = "${each.value}"
-    UniqueTag            = "data_${each.index}"
+    UniqueTag            = "data_${each.key}"
   }
 }
 
