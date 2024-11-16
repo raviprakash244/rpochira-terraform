@@ -52,7 +52,7 @@ resource "aws_network_interface" "data_eni" {
   for_each = toset(local.all_subnet_ids)
   subnet_id       = each.value  
   security_groups = [var.security_group]
-  tags {
+  tags = {
     Subnet               = "${each.value}"
     UniqueTag            = "data_${each.index}"
   }
