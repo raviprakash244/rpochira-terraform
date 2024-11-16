@@ -33,6 +33,12 @@ variable "subnet_name_list" {
   default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
 }
 
+resource "random_string" "unique" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 data "aws_subnet" "subnets" { 
   for_each = toset(var.subnet_name_list)
   filter { 
@@ -40,6 +46,8 @@ data "aws_subnet" "subnets" {
     values = ["*${each.value}*"]
   }
 }
+
+
 
 locals {
   all_subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
