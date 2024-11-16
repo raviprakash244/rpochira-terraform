@@ -8,6 +8,26 @@ terraform {
   }
 }
 
+variable "instance_count" {
+  type    = int
+  default = 3
+}
+
+variable "ami_id" {
+  type    = string
+  default = "ami-030c239b5d3296394"
+}
+
+variable "security_group" {
+  type    = string
+  default = "sg-057749862a8753300"
+}
+
+variable "instance_type" {
+  type    = string
+  default = "t2.micro"
+}
+
 variable "subnet_name_list" {
   type    = list(string)
   default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
@@ -29,7 +49,7 @@ resource "aws_network_interface" "eni" {
   for_each = toset(local.subnet_ids) 
 
   subnet_id       = each.value  
-  security_groups = ["sg-057749862a8753300"]
+  security_groups = [var.security_group]
 
 }
 
@@ -37,13 +57,13 @@ resource "aws_network_interface" "eni" {
 resource "aws_launch_template" "example" {
   for_each      = toset(local.subnet_ids) 
   name          = "couchbase-data-launch-template-${each.value}"
-  image_id      = "ami-030c239b5d3296394"  
-  instance_type = "t2.micro"                
+  image_id      = var.ami_id 
+  instance_type = var.instance_type          
   key_name      = "terminal"                
 
   network_interfaces {
     associate_public_ip_address = false
-    security_groups             = ["sg-057749862a8753300"]
+    security_groups             = [var.security_group]
     network_interface_id        = aws_network_interface.eni[each.key].id  
     device_index                = 0
   }
@@ -66,9 +86,9 @@ EOF
 
 
 resource "aws_autoscaling_group" "couchbase_data" {
-  desired_capacity     = 3
-  max_size             = 3
-  min_size             = 3
+  desired_capacity     = var.instance_count
+  max_size             = var.instance_count
+  min_size             = var.instance_count
   vpc_zone_identifier  = local.subnet_ids  
 
   launch_template {
