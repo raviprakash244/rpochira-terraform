@@ -30,8 +30,9 @@ locals {
 }
 
 
+
 # Launch Template for EC2 instances
-resource "aws_launch_template" "`" {
+resource "aws_launch_template" "example" {
   name          = "couchbase-data-launch-template"
   image_id      = "ami-030c239b5d3296394"  # Replace with your AMI ID
   instance_type = "t2.micro"                # Replace with your instance type
