@@ -149,7 +149,7 @@ EOF
 }
 
 resource "aws_autoscaling_lifecycle_hook" "example_hook" {
-  for_each = toset(local.subnet_ids)  # Iterate over subnets or ASGs
+  for_each = toset(local.all_subnet_ids)  # Iterate over subnets or ASGs
 
   autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
   name                   = "asg-cbdata-lifecycle-hook"
