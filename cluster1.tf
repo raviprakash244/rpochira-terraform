@@ -31,9 +31,6 @@ resource "aws_network_interface" "eni" {
   subnet_id       = each.value  
   security_groups = ["sg-057749862a8753300"]
 
-  tags = {
-    Name = "eni-instance-${each.key + 1}"
-  }
 }
 
 
