@@ -83,13 +83,14 @@ EOF
 }
 
 resource "aws_autoscaling_group" "couchbase_data" {
-  desired_capacity     = var.instance_count
-  max_size             = var.instance_count
-  min_size             = var.instance_count
-  vpc_zone_identifier  = local.subnet_ids  
+  for_each            = toset(local.subnet_ids)  # Iterating over the subnet IDs
+  desired_capacity    = var.instance_count
+  max_size            = var.instance_count
+  min_size            = var.instance_count
+  vpc_zone_identifier = [each.value]  # Using each.value (subnet ID) for each ASG
 
   launch_template {
-    id      = aws_launch_template.example[each.key].id  # Use each.key here to index the correct launch template
+    id      = aws_launch_template.example[each.key].id  # Referencing the correct launch template
     version = "$Latest"
   }
 
@@ -113,6 +114,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   health_check_type         = "EC2"
   health_check_grace_period = 60
 }
+
 
 
 resource "aws_iam_role" "example_lifecycle_role" {
