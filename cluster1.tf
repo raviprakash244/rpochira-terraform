@@ -176,5 +176,5 @@ locals {
 
 output "subnet_ids" {
   description = "The list of subnet IDs"
-  value       = locals.subnet_ids
+  value       = locals.round_robin_subnet_ids
 }
