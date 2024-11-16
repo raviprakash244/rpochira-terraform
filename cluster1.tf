@@ -1,6 +1,6 @@
 terraform {
   backend "remote" {
-    hostname = "app.terraform.io"
+    hostname     = "app.terraform.io"
     organization = "rpochira"
     workspaces {
       name = "rpochira"
@@ -34,7 +34,7 @@ variable "subnet_name_list" {
 }
 
 data "aws_subnet" "subnets" { 
-  for_each = toset(var.subnet_name_list)  
+  for_each = toset(var.subnet_name_list)
   filter { 
     name   = "tag:Name"
     values = ["*${each.value}*"]
@@ -46,13 +46,11 @@ locals {
 }
 
 resource "aws_network_interface" "eni" {
-  for_each = toset(local.subnet_ids) 
+  for_each = toset(local.subnet_ids)
 
   subnet_id       = each.value  
   security_groups = [var.security_group]
-
 }
-
 
 resource "aws_launch_template" "example" {
   for_each      = toset(local.subnet_ids)
@@ -64,6 +62,7 @@ resource "aws_launch_template" "example" {
   network_interfaces {
     associate_public_ip_address = false
     security_groups             = [var.security_group]
+    network_interface_id        = aws_network_interface.eni[each.value].id
     device_index                = 0
   }
 
@@ -82,19 +81,20 @@ EOF
 }
 
 resource "aws_autoscaling_group" "couchbase_data" {
+  for_each            = toset(local.subnet_ids)  # This iterates over subnet IDs
   desired_capacity    = var.instance_count
   max_size            = var.instance_count
   min_size            = var.instance_count
-  vpc_zone_identifier = local.subnet_ids
+  vpc_zone_identifier = [each.value]  # Each subnet
 
   launch_template {
-    id      = aws_launch_template.example[local.subnet_ids[0]].id  # Reference the first launch template
+    id      = aws_launch_template.example[each.value].id
     version = "$Latest"
   }
 
   tag {
     key                 = "Name"
-    value               = "asg-example-instance"
+    value               = "asg-example-instance-${each.value}"
     propagate_at_launch = true
   }
 
@@ -112,10 +112,6 @@ resource "aws_autoscaling_group" "couchbase_data" {
   health_check_type         = "EC2"
   health_check_grace_period = 60
 }
-
-
-
-
 
 resource "aws_iam_role" "example_lifecycle_role" {
   name = "example-lifecycle-role"
@@ -153,12 +149,13 @@ EOF
 }
 
 resource "aws_autoscaling_lifecycle_hook" "example_hook" {
-  for_each              = toset(local.subnet_ids)  
-  autoscaling_group_name  = aws_autoscaling_group.couchbase_data[each.key].name  
-  name                  = "example-lifecycle-hook"
-  lifecycle_transition  = "autoscaling:EC2_INSTANCE_LAUNCHING"
-  default_result        = "CONTINUE"
-  heartbeat_timeout     = 120
+  for_each = toset(local.subnet_ids)  # Iterate over subnets or ASGs
+
+  autoscaling_group_name  = aws_autoscaling_group.couchbase_data[each.value].name  # Use each.value here, not each.key
+  name                   = "example-lifecycle-hook"
+  lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
+  default_result         = "CONTINUE"
+  heartbeat_timeout      = 120
 
   notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
   role_arn                = aws_iam_role.example_lifecycle_role.arn
