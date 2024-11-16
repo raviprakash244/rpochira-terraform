@@ -55,7 +55,7 @@ resource "aws_network_interface" "eni" {
 
 
 resource "aws_launch_template" "example" {
-  for_each      = toset(local.subnet_ids) 
+  for_each      = toset(local.subnet_ids)
   name          = "couchbase-data-launch-template-${each.value}"
   image_id      = var.ami_id 
   instance_type = var.instance_type          
@@ -89,7 +89,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   vpc_zone_identifier  = local.subnet_ids  
 
   launch_template {
-    id      = lookup(aws_launch_template.example, each.value).id
+    id      = aws_launch_template.example[each.key].id  # Use each.key here to index the correct launch template
     version = "$Latest"
   }
 
@@ -113,7 +113,6 @@ resource "aws_autoscaling_group" "couchbase_data" {
   health_check_type         = "EC2"
   health_check_grace_period = 60
 }
-
 
 
 resource "aws_iam_role" "example_lifecycle_role" {
