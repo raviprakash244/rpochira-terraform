@@ -59,8 +59,7 @@ resource "aws_network_interface" "data_eni" {
 }
 
 resource "aws_launch_template" "couchbase_data" {
-  for_each      = aws_network_interface.eni
-  name          = "couchbase-data-launch-template-${each.value}"
+  name          = "couchbase-data-launch-template"
   image_id      = var.ami_id
   instance_type = var.instance_type
   key_name      = "terminal"
