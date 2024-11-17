@@ -70,9 +70,7 @@ resource "aws_vpc_endpoint" "ec2_endpoint" {
   vpc_id            = var.vpc_id
   service_name      = "com.amazonaws.us-east-1.ec2"
   vpc_endpoint_type = "Interface"
-
-  subnet_ids = var.all_subnet_ids
-
+  subnet_ids = local.all_subnet_ids
   security_group_ids = [var.security_group]
 
   tags = {
@@ -86,7 +84,7 @@ resource "aws_vpc_endpoint" "autoscaling_endpoint" {
   service_name      = "com.amazonaws.us-east-1.autoscaling"
   vpc_endpoint_type = "Interface"
 
-  subnet_ids = var.all_subnet_ids
+  subnet_ids = local.all_subnet_ids
 
   security_group_ids = [var.security_group]
 
