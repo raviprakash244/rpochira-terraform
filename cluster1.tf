@@ -8,9 +8,9 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-}
+# provider "aws" {
+#   region = "us-east-1"
+# }
 
 # Variables for reusability (replace these values with your actual IDs)
 variable "vpc_id" {
