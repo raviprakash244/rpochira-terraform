@@ -8,6 +8,17 @@ terraform {
   }
 }
 
+provider "aws" {
+  region = "us-east-1"
+}
+
+# Variables for reusability (replace these values with your actual IDs)
+variable "vpc_id" {
+  description = "The ID of the VPC"
+  type        = string
+  default = "vpc-07208b1bbba41ce40"
+}
+
 variable "instance_count" {
   type    = number
   default = 3
@@ -48,21 +59,41 @@ data "aws_subnet" "subnets" {
 }
 
 
-
 locals {
   all_subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
   subnet_index   = [for i in range(var.instance_count) : i % length(local.all_subnet_ids)]
 }
 
-# resource "aws_network_interface" "data_eni" {
-#   count             = var.instance_count
-#   subnet_id         = local.all_subnet_ids[local.subnet_index[count.index]]
-#   security_groups = [var.security_group]
-#   tags = {
-#     Subnet               = local.all_subnet_ids[local.subnet_index[count.index]]
-#     UniqueTag            = "data_${count.index}"
-#   }
-# }
+
+# EC2 Interface Endpoint
+resource "aws_vpc_endpoint" "ec2_endpoint" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.us-east-1.ec2"
+  vpc_endpoint_type = "Interface"
+
+  subnet_ids = var.all_subnet_ids
+
+  security_group_ids = [var.security_group]
+
+  tags = {
+    Name = "ec2-endpoint"
+  }
+}
+
+# Autoscaling Interface Endpoint
+resource "aws_vpc_endpoint" "autoscaling_endpoint" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.us-east-1.autoscaling"
+  vpc_endpoint_type = "Interface"
+
+  subnet_ids = var.all_subnet_ids
+
+  security_group_ids = [var.security_group]
+
+  tags = {
+    Name = "autoscaling-endpoint"
+  }
+}
 
 resource "aws_launch_template" "couchbase_data" {
   name          = "couchbase-data-launch-template"
