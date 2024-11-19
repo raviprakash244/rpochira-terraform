@@ -166,9 +166,9 @@ variable "instance_type" {
   default = "t2.micro"
 }
 
-variable "subnet_name_list" {
+data "subnet_name_list" {
   type    = list(string)
-  default = ["public_subnet_a", "public_subnet_b", "public_subnet_c"]
+  default = [aws_subnet.public_subnet_a.name, aws_subnet.public_subnet_b.name, aws_subnet.public_subnet_c.name]
 }
 
 resource "random_string" "unique" {
