@@ -167,8 +167,12 @@ variable "instance_type" {
 }
 
 data "aws_subnet" "subnet_name_list" {
-  type    = list(string)
-  default = [aws_subnet.public_subnet_a.name, aws_subnet.public_subnet_b.name, aws_subnet.public_subnet_c.name]
+  for_each = toset([aws_subnet.public_subnet_a.name, aws_subnet.public_subnet_b.name, aws_subnet.public_subnet_c.name])
+
+  filter {
+    name   = "tag:Name"
+    values = [each.value]
+  }
 }
 
 resource "random_string" "unique" {
