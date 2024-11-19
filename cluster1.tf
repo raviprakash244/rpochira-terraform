@@ -168,7 +168,7 @@ variable "instance_type" {
 
 variable "subnet_name_list" {
   type    = list(string)
-  default = ["private-subnet-1", "private-subnet-2", "private-subnet-3"]
+  default = ["public_subnet_a", "public_subnet_b", "public_subnet_c"]
 }
 
 resource "random_string" "unique" {
