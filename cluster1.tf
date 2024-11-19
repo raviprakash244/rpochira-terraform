@@ -167,7 +167,11 @@ variable "instance_type" {
 }
 
 data "aws_subnet" "subnet_name_list" {
-  for_each = toset([aws_subnet.public_subnet_a.name, aws_subnet.public_subnet_b.name, aws_subnet.public_subnet_c.name])
+  for_each = toset([
+    "PublicSubnet-A", 
+    "PublicSubnet-B", 
+    "PublicSubnet-C"
+  ])
 
   filter {
     name   = "tag:Name"
