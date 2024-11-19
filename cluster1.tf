@@ -166,7 +166,7 @@ variable "instance_type" {
   default = "t2.micro"
 }
 
-data "subnet_name_list" {
+data "aws_subnet" "subnet_name_list" {
   type    = list(string)
   default = [aws_subnet.public_subnet_a.name, aws_subnet.public_subnet_b.name, aws_subnet.public_subnet_c.name]
 }
@@ -178,7 +178,7 @@ resource "random_string" "unique" {
 }
 
 data "aws_subnet" "subnets" { 
-  for_each = toset(var.subnet_name_list)
+  for_each = toset(data.aws_subnet.subnet_name_list)
   filter { 
     name   = "tag:Name"
     values = ["*${each.value}*"]
