@@ -8,11 +8,6 @@ terraform {
   }
 }
 
-
-provider "aws" {
-  region = "us-east-1"  # Change to your preferred region
-}
-
 # Create a VPC
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"  # VPC CIDR block (can be customized)
@@ -145,11 +140,11 @@ resource "aws_security_group" "ec2_sg" {
 }
 
 # Variables for reusability (replace these values with your actual IDs)
-variable "vpc_id" {
-  description = "The ID of the VPC"
-  type        = string
-  default = aws_vpc.main_vpc.id
-}
+# variable "vpc_id" {
+#   description = "The ID of the VPC"
+#   type        = string
+#   default = aws_vpc.main_vpc.id
+# }
 
 variable "instance_count" {
   type    = number
