@@ -156,10 +156,10 @@ variable "ami_id" {
   default = "ami-030c239b5d3296394"
 }
 
-variable "security_group" {
-  type    = string
-  default = aws_security_group.ec2_sg.id
-}
+# variable "security_group" {
+#   type    = string
+#   default = aws_security_group.ec2_sg.id
+# }
 
 variable "instance_type" {
   type    = string
@@ -198,7 +198,7 @@ resource "aws_launch_template" "couchbase_data" {
 
   network_interfaces {
     associate_public_ip_address = false
-    security_groups             = [var.security_group]
+    security_groups             = [aws_security_group.ec2_sg.id]
   }
 
   user_data = base64encode(<<EOF
@@ -250,7 +250,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
 resource "aws_network_interface" "data_eni" {
   count             = var.instance_count
   subnet_id         = local.all_subnet_ids[local.subnet_index[count.index]]
-  security_groups = [var.security_group]
+  security_groups = [aws_security_group.ec2_sg.id]
   tags = {
     Subnet               = local.all_subnet_ids[local.subnet_index[count.index]]
     UniqueTag            = "data_${count.index}"
