@@ -166,17 +166,12 @@ variable "instance_type" {
   default = "t2.micro"
 }
 
-data "aws_subnet" "subnet_name_list" {
-  for_each = toset([
-    "PublicSubnet-A", 
-    "PublicSubnet-B", 
-    "PublicSubnet-C"
-  ])
-
-  filter {
-    name   = "tag:Name"
-    values = [each.value]
-  }
+locals {
+  subnet_ids = [
+    aws_subnet.public_subnet_a.id,
+    aws_subnet.public_subnet_b.id,
+    aws_subnet.public_subnet_c.id
+  ]
 }
 
 resource "random_string" "unique" {
@@ -185,16 +180,16 @@ resource "random_string" "unique" {
   upper   = false
 }
 
-data "aws_subnet" "subnets" { 
-  for_each = toset(data.aws_subnet.subnet_name_list)
-  filter { 
-    name   = "tag:Name"
-    values = ["*${each.value}*"]
-  }
-}
+# data "aws_subnet" "subnets" { 
+#   for_each = toset(data.aws_subnet.subnet_name_list)
+#   filter { 
+#     name   = "tag:Name"
+#     values = ["*${each.value}*"]
+#   }
+# }
 
 locals {
-  all_subnet_ids = [for subnet in data.aws_subnet.subnets : subnet.id]
+  all_subnet_ids = local.subnet_ids
   subnet_index   = [for i in range(var.instance_count) : i % length(local.all_subnet_ids)]
 }
 
