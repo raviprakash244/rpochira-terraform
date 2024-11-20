@@ -281,7 +281,7 @@ resource "aws_ebs_volume" "data_ebs" {
 
   availability_zone = each.key  
   size              = 8         
-  volume_type       = "gp2"     
+  type       = "gp2"     
 
   tags = { 
     AvailabilityZone = each.key
