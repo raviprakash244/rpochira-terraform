@@ -20,12 +20,12 @@ locals {
 variable "availability_zones" {
   description = "List of Availability Zones"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"] # Add your required AZs here
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"] 
 }
 
 # Create a VPC
 resource "aws_vpc" "my_vpc" {
-  cidr_block = "10.0.0.0/16"  # VPC CIDR block (can be customized)
+  cidr_block = "10.0.0.0/16"  
   enable_dns_support = true
   enable_dns_hostnames = true
 
@@ -35,46 +35,42 @@ resource "aws_vpc" "my_vpc" {
 }
 
 
-# Create Public Subnet (First Availability Zone)
 resource "aws_subnet" "public_subnet_a" {
   vpc_id              = aws_vpc.my_vpc.id
-  cidr_block          = "10.0.1.0/24"  # Public subnet CIDR (can be customized)
-  availability_zone   = "us-east-1a"    # Change to your desired AZ
+  cidr_block          = "10.0.1.0/24"  
+  availability_zone   = "us-east-1a"    
 
-  map_public_ip_on_launch = true  # Enable public IP for instances
+  map_public_ip_on_launch = true  
 
   tags = {
     Name = "PublicSubnet-A"
   }
 }
 
-# Create Public Subnet (Second Availability Zone)
 resource "aws_subnet" "public_subnet_b" {
   vpc_id              = aws_vpc.my_vpc.id
   cidr_block          = "10.0.2.0/24"
-  availability_zone   = "us-east-1b"    # Change to your desired AZ
+  availability_zone   = "us-east-1b"    
 
-  map_public_ip_on_launch = true  # Enable public IP for instances
+  map_public_ip_on_launch = true 
 
   tags = {
     Name = "PublicSubnet-B"
   }
 }
 
-# Create Public Subnet (Third Availability Zone)
 resource "aws_subnet" "public_subnet_c" {
   vpc_id              = aws_vpc.my_vpc.id
   cidr_block          = "10.0.3.0/24"
-  availability_zone   = "us-east-1c"    # Change to your desired AZ
+  availability_zone   = "us-east-1c"    
 
-  map_public_ip_on_launch = true  # Enable public IP for instances
+  map_public_ip_on_launch = true  
 
   tags = {
     Name = "PublicSubnet-C"
   }
 }
 
-# Create Internet Gateway for public access
 resource "aws_internet_gateway" "internet_gateway" {
   vpc_id = aws_vpc.my_vpc.id
 
@@ -83,7 +79,6 @@ resource "aws_internet_gateway" "internet_gateway" {
   }
 }
 
-# Create Route Table for Public Subnets
 resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.my_vpc.id
 
@@ -97,29 +92,24 @@ resource "aws_route_table" "public_route_table" {
   }
 }
 
-# Associate Route Table with Public Subnet A
 resource "aws_route_table_association" "rt_assoc_a" {
   subnet_id      = aws_subnet.public_subnet_a.id
   route_table_id = aws_route_table.public_route_table.id
 }
 
-# Associate Route Table with Public Subnet B
 resource "aws_route_table_association" "rt_assoc_b" {
   subnet_id      = aws_subnet.public_subnet_b.id
   route_table_id = aws_route_table.public_route_table.id
 }
 
-# Associate Route Table with Public Subnet C
 resource "aws_route_table_association" "rt_assoc_c" {
   subnet_id      = aws_subnet.public_subnet_c.id
   route_table_id = aws_route_table.public_route_table.id
 }
 
-# Create Security Group for EC2 Instances
 resource "aws_security_group" "ec2_sg" {
   vpc_id = aws_vpc.my_vpc.id
 
-  # Allow SSH (port 22) from anywhere
   egress {
     cidr_blocks = ["0.0.0.0/0"]
     from_port   = 0
@@ -134,7 +124,6 @@ resource "aws_security_group" "ec2_sg" {
     protocol    = "tcp"
   }
 
-  # Allow HTTP (port 80) from anywhere
   ingress {
     cidr_blocks = ["0.0.0.0/0"]
     from_port   = 80
@@ -142,7 +131,6 @@ resource "aws_security_group" "ec2_sg" {
     protocol    = "tcp"
   }
 
-  # Allow HTTPS (port 443) from anywhere
   ingress {
     cidr_blocks = ["0.0.0.0/0"]
     from_port   = 443
