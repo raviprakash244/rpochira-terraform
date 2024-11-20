@@ -17,6 +17,12 @@ locals {
   asg_name = "asg-${random_pet.asg_name.id}"
 }
 
+variable "availability_zones" {
+  description = "List of Availability Zones"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"] # Add your required AZs here
+}
+
 # Create a VPC
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"  # VPC CIDR block (can be customized)
@@ -27,6 +33,7 @@ resource "aws_vpc" "my_vpc" {
     Name = "my-vpc"
   }
 }
+
 
 # Create Public Subnet (First Availability Zone)
 resource "aws_subnet" "public_subnet_a" {
@@ -279,6 +286,19 @@ resource "null_resource" "eni_delay" {
   }
 
   depends_on = [aws_network_interface.data_eni]
+}
+
+resource "aws_ebs_volume" "data_ebs" {
+  for_each = toset(var.availability_zones) 
+
+  availability_zone = each.key  
+  size              = 8         
+  volume_type       = "gp2"     
+
+  tags = { 
+    AvailabilityZone = each.key
+    AsgName  = local.asg_name
+  }
 }
 
 

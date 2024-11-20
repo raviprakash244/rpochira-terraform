@@ -60,23 +60,73 @@ def lambda_handler(event, context):
         ec2_subnet_mapping = map_ec2_subnet(interfaces, instance_details)
         logger.info(f"Mapping of EC2 & Subnet: {ec2_subnet_mapping}")
 
+        #Get the details of EBS volume.
+        ebs_data = get_ebs_volumes_with_tag("AutoscaleGroup", auto_scaling_group_name)
+        logger.info(f"Available EBS volumes: {ebs_data}")
+
+        ec2_subnet_mapping = distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_data)
+
         for item in ec2_subnet_mapping:
             try:
                 eni_id = item.get("AssignedENI")
                 ec2_id = item.get("InstanceId")
-
+                subnet_id = item.get("SubnetId")
+                
+                logger.info(f"Attaching eni id {eni_id} to {ec2_id}")
+                
                 response = ec2_client.attach_network_interface(
-                        NetworkInterfaceId=item.get("AssignedENI"),
-                        InstanceId=item.get("InstanceId"),
+                        NetworkInterfaceId=eni_id,
+                        InstanceId=ec2_id,
                         DeviceIndex=1
                     )
-                logger.info(f"{eni_id} has been attached to {ec2_id} successfully.")
+                logger.info(f"Successfully attached {eni_id} to {ec2_id}.")
+
+                tags = [
+                    {
+                        'Key': 'Subnet',
+                        'Value': subnet_id
+                    },
+                    {
+                        'Key': 'NetworkInterfaceId',
+                        'Value': eni_id
+                    }
+                ]
+
+                logger.info(f"Adding network interface tags {tags}")
+
+                final_tag_ec2s(ec2_id, tags)
+
+                logger.info(f"Successfully added network interface tags. ")
+
             except Exception as e:
                 logger.error(f"Error in attaching interface {eni_id} to {ec2_id}. {e}")
+                return {
+                        "statusCode": 400,
+                        "body": f"Error in attaching interface {eni_id} to {ec2_id}. {e}"
+                    }
+            
+        tags = [
+            {
+                'Key': 'SubnetAttachStatus',
+                'Value': 'Attached'
+            }
+        ]            
+
+        try:
+            for item in ec2_subnet_mapping:
+                ec2_id = item.get("InstanceId")
+                logger.info(f"Adding final EC2 tags {tags}")
+                final_tag_ec2s(ec2_id, tags)
+                logger.info(f"Successfully added final EC2 tags.")
+        except Exception as e:
+            return {
+                    "statusCode": 400,
+                    "body": e
+                }
 
         return {
             "statusCode": 200,
-            "body": json.dumps(ec2_subnet_mapping)
+            "body": "Successfully attached all network interfaces to respective EC2 instances.  "
         }
 
 def get_networkinterfaces(ags_name):
@@ -209,28 +259,62 @@ def map_ec2_subnet(subnet_data, ec2_data):
     
     return ec2_eni_mapping
 
-
-# def subnet_enis(eni_data):
-#     subnet_to_enis = {}
-#     for eni in eni_data:
-#         subnet_id = eni["subnet_id"]
-#         eni_id = eni["eni_id"]
+def get_ebs_volumes_with_tag(tag_key, tag_value):
+    try:
+        response = ec2_client.describe_volumes(
+            Filters=[
+                {
+                    'Name': 'tag:' + tag_key,
+                    'Values': [tag_value]
+                }
+            ]
+        )
+        volumes = response.get('Volumes', [])
         
-#         # Append ENI ID to the corresponding subnet
-#         if subnet_id not in subnet_to_enis:
-#             subnet_to_enis[subnet_id] = []
-#         subnet_to_enis[subnet_id].append(eni_id)
+        volume_details = []
+        for volume in volumes:
+            volume_id = volume.get('VolumeId')
+            availability_zone = volume.get('AvailabilityZone')
+            
+            volume_details.append({
+                'VolumeId': volume_id,
+                'AvailabilityZone': availability_zone
+            })
+        
+        return volume_details
+    
+    except Exception as e:
+        logger.error(f"Error fetching EBS volumes with tag {tag_key}:{tag_value}. {e}")
+        return []
 
-#     return subnet_to_enis
+def distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_volumes):
+    volumes_by_az = defaultdict(list)
+    for volume in ebs_volumes:
+        az = volume.get('AvailabilityZone')
+        volume_id = volume.get('VolumeId')
+        volumes_by_az[az].append(volume_id)
+    
+    for ec2_instance in ec2_subnet_mapping:
+        instance_id = ec2_instance.get("InstanceId")
+        az = ec2_instance.get("availability_zone")
+        
+        if az in volumes_by_az and volumes_by_az[az]:
+            volume_id = volumes_by_az[az].pop(0)  
+            attach_ebs_to_instance(instance_id, volume_id)
+            logger.info(f"Successfully attached EBS volume {volume_id} to EC2 instance {instance_id}.")
+        else:
+            logger.warning(f"No available EBS volume for EC2 instance {instance_id} in AZ {az}.")
+    
+    return ec2_subnet_mapping
 
-# def subnet_ec2(ec2_data):
-#     subnet_to_ec2_map = defaultdict(list)
+def final_tag_ec2s(instance_id, tags):
+    try:
+        response = ec2_client.create_tags(
+            Resources=[instance_id],
+            Tags=tags
+         )
+        
+        return response
 
-#     for ec2 in ec2_data:
-#         subnet_id = ec2["subnet_id"]
-#         instance_id = ec2["instance_id"]
-#         subnet_to_ec2_map[subnet_id].append(instance_id)
-
-#     # Output the result
-#     for subnet, instances in subnet_to_ec2_map.items():
-#         print(f"Subnet: {subnet}, EC2 Count: {len(instances)}, EC2 Instances: {instances}")
+    except Exception as e:
+        raise Exception(f"Exception during tagging. {tags}")
