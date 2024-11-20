@@ -248,6 +248,8 @@ resource "aws_autoscaling_group" "couchbase_data" {
 
   health_check_type         = "EC2"
   health_check_grace_period = 60
+
+  depends_on = [aws_network_interface.data_eni]
 }
 
 resource "aws_network_interface" "data_eni" {
