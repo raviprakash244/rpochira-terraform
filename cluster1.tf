@@ -8,6 +8,15 @@ terraform {
   }
 }
 
+resource "random_pet" "asg_name" {
+  length    = 2       
+  separator = "-"     
+}
+
+locals {
+  asg_name = "asg-${random_pet.asg_name.id}"
+}
+
 # Create a VPC
 resource "aws_vpc" "my_vpc" {
   cidr_block = "10.0.0.0/16"  # VPC CIDR block (can be customized)
@@ -219,6 +228,7 @@ EOF
 }
 
 resource "aws_autoscaling_group" "couchbase_data" {
+  name                = local.asg_name
   desired_capacity    = var.instance_count
   max_size            = var.instance_count
   min_size            = var.instance_count
@@ -259,7 +269,7 @@ resource "aws_network_interface" "data_eni" {
   tags = {
     Subnet               = local.all_subnet_ids[local.subnet_index[count.index]]
     UniqueTag            = "data_${count.index}"
-    AutoscaleGroup       = aws_autoscaling_group.couchbase_data.name
+    AutoscaleGroup       = local.asg_name
   }
 }
 
