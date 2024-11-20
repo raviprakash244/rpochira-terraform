@@ -61,16 +61,18 @@ def lambda_handler(event, context):
         logger.info(f"Mapping of EC2 & Subnet: {ec2_subnet_mapping}")
 
         #Get the details of EBS volume.
-        ebs_data = get_ebs_volumes_with_tag("AutoscaleGroup", auto_scaling_group_name)
+        ebs_data = get_ebs_volumes_with_tag("AsgName", auto_scaling_group_name)
         logger.info(f"Available EBS volumes: {ebs_data}")
 
         ec2_subnet_mapping = distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_data)
+        logger.info(f"Final Data with EBS volume mapping: {ec2_subnet_mapping}")
 
         for item in ec2_subnet_mapping:
             try:
                 eni_id = item.get("AssignedENI")
                 ec2_id = item.get("InstanceId")
                 subnet_id = item.get("SubnetId")
+                volume_id = item.get("AssignedVolumeId")
                 
                 logger.info(f"Attaching eni id {eni_id} to {ec2_id}")
                 
@@ -80,6 +82,8 @@ def lambda_handler(event, context):
                         DeviceIndex=1
                     )
                 logger.info(f"Successfully attached {eni_id} to {ec2_id}.")
+
+                response = attach_ebs_volumes_to_ec2(ec2_id, volume_id)
 
                 tags = [
                     {
@@ -247,13 +251,15 @@ def map_ec2_subnet(subnet_data, ec2_data):
             ec2_eni_mapping.append({
                 "InstanceId": ec2["InstanceId"],
                 "SubnetId": subnet_id,
-                "AssignedENI": assigned_eni["eni_id"]
+                "AssignedENI": assigned_eni["eni_id"],
+                "availability_zone": ec2["AvailabilityZone"]
             })
         else:
             ec2_eni_mapping.append({
                 "InstanceId": ec2["InstanceId"],
                 "SubnetId": subnet_id,
-                "AssignedENI": None  # No available ENI
+                "AssignedENI": None,
+                "availability_zone": ec2["AvailabilityZone"]
             })
 
     
@@ -288,6 +294,7 @@ def get_ebs_volumes_with_tag(tag_key, tag_value):
         return []
 
 def distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_volumes):
+    from collections import defaultdict
     volumes_by_az = defaultdict(list)
     for volume in ebs_volumes:
         az = volume.get('AvailabilityZone')
@@ -300,9 +307,10 @@ def distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_volumes):
         
         if az in volumes_by_az and volumes_by_az[az]:
             volume_id = volumes_by_az[az].pop(0)  
-            attach_ebs_to_instance(instance_id, volume_id)
-            logger.info(f"Successfully attached EBS volume {volume_id} to EC2 instance {instance_id}.")
+            ec2_instance["AssignedVolumeId"] = volume_id 
+            logger.info(f"Successfully assigned EBS volume {volume_id} to EC2 instance {instance_id} in AZ {az}.")
         else:
+            ec2_instance["AssignedVolumeId"] = None  
             logger.warning(f"No available EBS volume for EC2 instance {instance_id} in AZ {az}.")
     
     return ec2_subnet_mapping
@@ -318,3 +326,20 @@ def final_tag_ec2s(instance_id, tags):
 
     except Exception as e:
         raise Exception(f"Exception during tagging. {tags}")
+
+def attach_ebs_volumes_to_ec2(instance_id, volume_id):
+    # instance_id = ec2_instance.get("InstanceId")
+    # volume_id = ec2_instance.get("AssignedVolumeId")
+    try:
+        logger.info(f"Attaching volume {volume_id} to instance {instance_id}.")
+        response = ec2_client.attach_volume(
+            VolumeId=volume_id,
+            InstanceId=instance_id,
+            Device='/dev/xvdf'
+        )
+        logger.info(f"Successfully attached volume {volume_id} to instance {instance_id}.")
+
+        return response
+    except Exception as e:
+        raise Exception(f"Failed to attach volume {volume_id} to instance {instance_id}. Error: {e}")
+        
