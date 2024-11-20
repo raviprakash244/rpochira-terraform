@@ -259,7 +259,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
   health_check_type         = "EC2"
   health_check_grace_period = 60
 
-  depends_on = [aws_network_interface.data_eni]
+  depends_on = [null_resource.eni_delay]
 }
 
 resource "aws_network_interface" "data_eni" {
@@ -272,6 +272,15 @@ resource "aws_network_interface" "data_eni" {
     AutoscaleGroup       = local.asg_name
   }
 }
+
+resource "null_resource" "eni_delay" {
+  provisioner "local-exec" {
+    command = "sleep 30" 
+  }
+
+  depends_on = [aws_network_interface.data_eni]
+}
+
 
 resource "aws_iam_role" "example_lifecycle_role" {
   name = "example-lifecycle-role"
