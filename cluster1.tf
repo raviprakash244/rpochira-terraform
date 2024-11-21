@@ -152,7 +152,7 @@ resource "aws_security_group" "ec2_sg" {
 
 variable "instance_count" {
   type    = number
-  default = 4
+  default = 3
 }
 
 variable "ami_id" {
