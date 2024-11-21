@@ -168,8 +168,8 @@ def handle__new_provision(event):
                     "statusCode": 400,
                     "body": f"Error in attaching interface {eni_id} to {ec2_id}. {e}"
                 }
-        
-
+    ec2_subnet_mapping = [{"InstanceId": "i-0032376f9dd691231", "SubnetId": "subnet-0318cab7cb2d592bf", "AssignedENI": "eni-03366751ca0028e39", "availability_zone": "us-east-1a", "AssignedVolumeId": "vol-01a9ceea039565b23"}, {"InstanceId": "i-08f921191e3593c98", "SubnetId": "subnet-0e7507f97be5ff02e", "AssignedENI": "eni-0a416220ab0878689", "availability_zone": "us-east-1b", "AssignedVolumeId": "vol-027bace9781b99fa1"}, {"InstanceId": "i-0236c75d140a152a0", "SubnetId": "subnet-07cbfd871c1f80536", "AssignedENI": "eni-0e58d143efde95acf", "availability_zone": "us-east-1c", "AssignedVolumeId": "vol-0003761e06906ee6f"}]
+    auto_scaling_group_name = "asg-expert-guinea"
     try:
         response = add_final_tags(auto_scaling_group_name, ec2_subnet_mapping)
     except Exception as e:
@@ -186,13 +186,13 @@ def handle__new_provision(event):
 def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
     logger.info("Adding final tags to Auto scaling group.")
     asg_tags = []
-    for items in ec2_subnet_mapping:
-        
-        instance_id = items.get("InstanceId")
+    
+    for item in ec2_subnet_mapping:
+        instance_id = item.get("InstanceId")
         subnet_id = item.get("SubnetId")
         eni_id = item.get("AssignedENI")
         ebs_id = item.get("AssignedVolumeId")
-
+        
         asg_tags.append ({
                 'Key': f'subnet_{instance_id}', 
                 'Value': subnet_id
@@ -207,6 +207,7 @@ def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
                 'Key': f'ebs_{instance_id}', 
                 'Value': eni_id
             })
+        
     try:
         response = tag_asg(auto_scaling_group_name, asg_tags)
     except Exception as e:
@@ -477,9 +478,21 @@ def attach_ebs_volumes_to_ec2(instance_id, volume_id):
         raise Exception(f"Failed to attach volume {volume_id} to instance {instance_id}. Error: {e}")
         
 def tag_asg(asg_name, tags):
+    logger.info(f"adding tags {tags} to {asg_name}")
     autoscaling_client = boto3.client('autoscaling')
+    formatted_tags = [
+        {
+            'ResourceId': asg_name,
+            'ResourceType': 'auto-scaling-group',
+            'Key': tag['Key'],
+            'Value': tag['Value'],
+            'PropagateAtLaunch': tag.get('PropagateAtLaunch', True)
+        }
+        for tag in tags
+     ]
+    
     try:
-        autoscaling_client.create_or_update_tags(Tags=tags)
+        autoscaling_client.create_or_update_tags(Tags=formatted_tags)
         print(f"Tags successfully added to Auto Scaling group '{asg_name}'.")
     except Exception as e:
-        print(f"Error adding tags to Auto Scaling group '{asg_name}': {e}")
+        raise Exception(f"Error adding tags to Auto Scaling group '{asg_name}': {e}")
