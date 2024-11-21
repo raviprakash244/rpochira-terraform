@@ -3,15 +3,20 @@ import json
 import logging
 from collections import defaultdict
 
+
+# Initialize boto3 clients for EC2 and Auto Scaling
 ec2_client = boto3.client('ec2')
 autoscaling_client = boto3.client('autoscaling')
 
+# Setup logging for debugging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Lambda handler
 def lambda_handler(event, context):
     logger.info(f"Event: {json.dumps(event)}")
     
+    # Get the details of the Auto Scaling lifecycle hook event
     lifecycle_event_Records = event.get('Records', {})
     logger.info(f"Records: {lifecycle_event_Records}")
     if len(lifecycle_event_Records) != 0:
@@ -42,24 +47,9 @@ def lambda_handler(event, context):
         return handle__new_provision(event)
 
 
-def handle_autoscale(auto_scaling_group_name, instance_id):
-    logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
-    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
-    instance_details = instance_details[0]
-    subnet_id = instance_details.get("subnet_id")
-    # Find available interfaces.
-    subnets = get_subnets(auto_scaling_group_name, subnet_id)
-    ebs_vols = get_ebs_volumes_with_tag("AsgName", auto_scaling_group_name)
-
-def get_subnets(auto_scaling_group_name, subnet_id):
-    networks = get_networkinterfaces(auto_scaling_group_name)
-    if not networks or len(networks) == 0:
-        return []
-    else:
-        return [eni for eni in networks if eni.get("subnet_id") == subnet_id]
-
 def handle__new_provision(event):
 
+    # Get the details of the Auto Scaling lifecycle hook event
     lifecycle_event_Records = event.get('Records', {})    
     lifecycle_event_string = lifecycle_event_Records[0].get("Sns", {}).get("Message")
     lifecycle_event = json.loads(lifecycle_event_string)
@@ -90,6 +80,7 @@ def handle__new_provision(event):
     ec2_subnet_mapping = map_ec2_subnet(interfaces, instance_details)
     logger.info(f"Mapping of EC2 & Subnet: {ec2_subnet_mapping}")
 
+    #Get the details of EBS volume.
     ebs_data = get_ebs_volumes_with_tag("AsgName", auto_scaling_group_name)
     logger.info(f"Available EBS volumes: {ebs_data}")
 
@@ -122,35 +113,14 @@ def handle__new_provision(event):
                 {
                     'Key': 'NetworkInterfaceId',
                     'Value': eni_id
-                },
-                {
-                    'Key': 'Status',
-                    'Value': 'in-use'
-                },
-                {
-                    'Key': 'AsgName',
-                    'Value': auto_scaling_group_name
-                },
-                {
-                    'Key': 'SubnetAttachStatus',
-                    'Value': 'Attached'
-                },
+                }
             ]
 
             tags_others = [
                 {
                     'Key': 'Instance',
                     'Value': ec2_id
-                },
-                {
-                    'Key': 'AsgName',
-                    'Value': auto_scaling_group_name
-                },
-                {
-                    'Key': 'Status',
-                    'Value': 'in-use'
-                },
-
+                }
             ]
 
             tag_eni(eni_id, tags_others)
@@ -169,9 +139,23 @@ def handle__new_provision(event):
                     "body": f"Error in attaching interface {eni_id} to {ec2_id}. {e}"
                 }
         
+    tags = [
+        {
+            'Key': 'SubnetAttachStatus',
+            'Value': 'Attached'
+        },
+        {
+            'Key': 'Status',
+            'Value': 'in-use'
+        }
+    ]            
 
     try:
-        add_final_tags(ec2_subnet_mapping)
+        for item in ec2_subnet_mapping:
+            ec2_id = item.get("InstanceId")
+            logger.info(f"Adding final EC2 tags {tags}")
+            final_tag_ec2s(ec2_id, tags)
+            logger.info(f"Successfully added final EC2 tags.")
     except Exception as e:
         return {
                 "statusCode": 400,
@@ -183,33 +167,6 @@ def handle__new_provision(event):
         "body": "Successfully attached all network interfaces to respective EC2 instances.  "
     }
 
-def add_final_tags(ec2_subnet_mapping):
-    asg_tags = []
-    for items in ec2_subnet_mapping:
-        
-        instance_id = items.get("InstanceId")
-        subnet_id = item.get("SubnetId")
-        eni_id = item.get("AssignedENI")
-        ebs_id = item.get("AssignedVolumeId")
-
-        asg_tags.append ({
-                'Key': f'subnet_{instance_id}', 
-                'Value': subnet_id
-            })
-
-        asg_tags.append ({
-                'Key': f'eni_{instance_id}', 
-                'Value': eni_id
-            })
-
-        asg_tags.append ({
-                'Key': f'ebs_{instance_id}', 
-                'Value': eni_id
-            })
-    try:
-        tag_asg()
-    except Exception as e:
-        raise Exception(f"Error  in tagging Autoscaling group with final tags {e}")
 
 def tag_eni(id, tags):
     try:
@@ -261,12 +218,16 @@ def get_networkinterfaces(ags_name):
 
     eni_details = []
     for eni in network_interfaces:
+        # Basic ENI information
         eni_id = eni['NetworkInterfaceId']
         subnet_id = eni['SubnetId']
         vpc_id = eni['VpcId']
         status = eni['Status']
         az = eni['AvailabilityZone']
         
+
+
+        # If the ENI is attached, retrieve the instance ID and private IPs
         attachment_details = None
         private_ips = []
         if 'Attachment' in eni:
@@ -274,9 +235,10 @@ def get_networkinterfaces(ags_name):
             instance_id = attachment_details['InstanceId']
             private_ips = [ip['PrivateIpAddress'] for ip in eni.get('PrivateIpAddresses', [])]
         else:
-            instance_id = None  
+            instance_id = None  # If not attached
             private_ips = [ip['PrivateIpAddress'] for ip in eni.get('PrivateIpAddresses', [])]
         
+        # Prepare the result
         eni_details.append({
             'eni_id': eni_id,
             'subnet_id': subnet_id,
@@ -287,6 +249,7 @@ def get_networkinterfaces(ags_name):
             'private_ips': private_ips
         })
     
+    # Return the collected ENI details
     return eni_details
 
 
@@ -382,14 +345,16 @@ def map_ec2_subnet(subnet_data, ec2_data):
 
     subnet_to_eni_map = defaultdict(list)
     for eni in subnet_data:
-        if eni["status"] == "available":  
+        if eni["status"] == "available":  # Only include available ENIs
             subnet_to_eni_map[eni["subnet_id"]].append(eni)
 
+    # Distribute ENIs to EC2 instances
     ec2_eni_mapping = []
 
     for ec2 in ec2_data:
         subnet_id = ec2["SubnetId"]
         if subnet_id in subnet_to_eni_map and subnet_to_eni_map[subnet_id]:
+            # Assign the first available ENI
             assigned_eni = subnet_to_eni_map[subnet_id].pop(0)
             ec2_eni_mapping.append({
                 "InstanceId": ec2["InstanceId"],
@@ -415,10 +380,6 @@ def get_ebs_volumes_with_tag(tag_key, tag_value):
                 {
                     'Name': 'tag:' + tag_key,
                     'Values': [tag_value]
-                },
-                {
-                    'Name': 'Status',
-                    'Values': 'available'
                 }
             ]
         )
@@ -441,6 +402,7 @@ def get_ebs_volumes_with_tag(tag_key, tag_value):
         return []
 
 def distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_volumes):
+    from collections import defaultdict
     volumes_by_az = defaultdict(list)
     for volume in ebs_volumes:
         az = volume.get('AvailabilityZone')
@@ -461,7 +423,21 @@ def distribute_ebs_volumes_to_ec2(ec2_subnet_mapping, ebs_volumes):
     
     return ec2_subnet_mapping
 
+# def final_tag_ec2s(instance_id, tags):
+#     try:
+#         response = ec2_client.create_tags(
+#             Resources=[instance_id],
+#             Tags=tags
+#          )
+        
+#         return response
+
+#     except Exception as e:
+#         raise Exception(f"Exception during tagging. {tags}")
+
 def attach_ebs_volumes_to_ec2(instance_id, volume_id):
+    # instance_id = ec2_instance.get("InstanceId")
+    # volume_id = ec2_instance.get("AssignedVolumeId")
     try:
         logger.info(f"Attaching volume {volume_id} to instance {instance_id}.")
         response = ec2_client.attach_volume(
