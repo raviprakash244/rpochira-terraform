@@ -41,8 +41,11 @@ def lambda_handler(event, context):
             "body": "Missing AutoScalingGroupName in the event."
         }
 
-    # if lifecycle_event == "autoscaling:TEST_NOTIFICATION":
-    return handle__new_provision(event)
+    if lifecycle_event == "autoscaling:TEST_NOTIFICATION" and not lifecycle_transition:
+        return handle__new_provision(event)
+    else:
+        return handle__new_provision(event)
+
 
 def handle__new_provision(event):
 
@@ -57,12 +60,17 @@ def handle__new_provision(event):
     lifecycle_transition = lifecycle_event.get('LifecycleTransition')
     lifecycle_event = lifecycle_event.get('Event')
 
-    logger.info("New cluster provisioning request started. ")
+    if not lifecycle_transition:
+        logger.info("New cluster provisioning request started. ")
+    else:
+        logger.info("New Autoscale event processing started. ")
+
     logger.info(f"Autoscaling group name: {auto_scaling_group_name}")
     interfaces = get_networkinterfaces(auto_scaling_group_name)
     logger.info(f"Available Intarfaces: {interfaces}")
-    logger.info("Fetching the information of all EC2 instances created as part of Autoscaling group: {AutoScalingGroupName}")
-    instance_details = get_instances_in_asg(auto_scaling_group_name)
+    logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {AutoScalingGroupName}")
+
+    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
     if not instance_details:
         return {
             "statusCode": 200,
@@ -246,17 +254,23 @@ def get_networkinterfaces(ags_name):
 
 
     
-def get_instances_in_asg(asg_name):
-    try:
-        response = autoscaling_client.describe_auto_scaling_groups(
-            AutoScalingGroupNames=[asg_name]
-        )
-        logger.info(f"Response of Autoscaling group: {response}")
-        instance_ids = []
-        for asg in response.get("AutoScalingGroups", []):
-            for instance in asg.get("Instances", []):
-                if instance.get("LifecycleState") == "InService":
-                    instance_ids.append(instance["InstanceId"])
+def get_instances_in_asg(asg_name, instance_identifier):
+
+    instance_ids = []
+
+    if instance_identifier:
+        instance_id.append(instance_identifier)
+    else:
+        try:
+            response = autoscaling_client.describe_auto_scaling_groups(
+                AutoScalingGroupNames=[asg_name]
+            )
+            logger.info(f"Response of Autoscaling group: {response}")
+            instance_ids = []
+            for asg in response.get("AutoScalingGroups", []):
+                for instance in asg.get("Instances", []):
+                    if instance.get("LifecycleState") == "InService":
+                        instance_ids.append(instance["InstanceId"])
         
         logger.info(f"Instance ids are: {instance_ids}")
         instance_details = get_instance_details(instance_ids)
