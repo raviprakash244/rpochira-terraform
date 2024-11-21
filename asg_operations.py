@@ -39,7 +39,7 @@ def lambda_handler(event, context):
     if lifecycle_event == "autoscaling:TEST_NOTIFICATION" and not lifecycle_transition:
         return handle__new_provision(event)
     else:
-        return handle__new_provision(event)
+        return handle_autoscale(auto_scaling_group_name, instance_id)
 
 
 def handle_autoscale(auto_scaling_group_name, instance_id):
