@@ -246,8 +246,6 @@ resource "aws_autoscaling_group" "couchbase_data" {
       propagate_at_launch = true
     }
 
-  ]
-
   lifecycle {
     create_before_destroy = true
   }
