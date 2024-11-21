@@ -235,10 +235,16 @@ resource "aws_autoscaling_group" "couchbase_data" {
   }
 
   tag {
-    key                 = "Name"
-    value               = "asg-cb-data"
-    propagate_at_launch = true
-  }
+      key                 = "Name"
+      value               = "asg-cb-data"
+      propagate_at_launch = true
+    }
+
+  tag {
+      key                 = "Status"
+      value               = "available"
+      propagate_at_launch = true
+    }
 
   lifecycle {
     create_before_destroy = true
@@ -265,6 +271,7 @@ resource "aws_network_interface" "data_eni" {
     Subnet               = local.all_subnet_ids[local.subnet_index[count.index]]
     UniqueTag            = "data_${count.index}"
     AutoscaleGroup       = local.asg_name
+    NodeStatus           = "available"
   }
 }
 
