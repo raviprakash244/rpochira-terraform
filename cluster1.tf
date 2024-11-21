@@ -234,7 +234,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
     version = "$Latest"
   }
 
-  tags =[ {
+  tags = [ {
     key                 = "Name"
     value               = "asg-cb-data"
     propagate_at_launch = true
