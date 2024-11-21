@@ -171,7 +171,7 @@ def handle__new_provision(event):
         
 
     try:
-        add_final_tags(ec2_subnet_mapping)
+        response = add_final_tags(auto_scaling_group_name, ec2_subnet_mapping)
     except Exception as e:
         return {
                 "statusCode": 400,
@@ -183,7 +183,8 @@ def handle__new_provision(event):
         "body": "Successfully attached all network interfaces to respective EC2 instances.  "
     }
 
-def add_final_tags(ec2_subnet_mapping):
+def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
+    logger.info("Adding final tags to Auto scaling group.")
     asg_tags = []
     for items in ec2_subnet_mapping:
         
@@ -207,7 +208,7 @@ def add_final_tags(ec2_subnet_mapping):
                 'Value': eni_id
             })
     try:
-        tag_asg()
+        response = tag_asg(auto_scaling_group_name, asg_tags)
     except Exception as e:
         raise Exception(f"Error  in tagging Autoscaling group with final tags {e}")
 
@@ -246,7 +247,7 @@ def get_networkinterfaces(ags_name):
     
     filters = [
             {
-                'Name': 'tag:' + 'AutoscaleGroup',  
+                'Name': 'tag:AutoscaleGroup',  
                 'Values': [ags_name]      
             },
             {
@@ -417,7 +418,7 @@ def get_ebs_volumes_with_tag(tag_key, tag_value):
                     'Values': [tag_value]
                 },
                 {
-                    'Name': 'Status',
+                    'Name': 'tag:Status',
                     'Values': ['available']
                 }
             ]
@@ -475,3 +476,10 @@ def attach_ebs_volumes_to_ec2(instance_id, volume_id):
     except Exception as e:
         raise Exception(f"Failed to attach volume {volume_id} to instance {instance_id}. Error: {e}")
         
+def tag_asg(asg_name, tags):
+    autoscaling_client = boto3.client('autoscaling')
+    try:
+        autoscaling_client.create_or_update_tags(Tags=tags)
+        print(f"Tags successfully added to Auto Scaling group '{asg_name}'.")
+    except Exception as e:
+        print(f"Error adding tags to Auto Scaling group '{asg_name}': {e}")
