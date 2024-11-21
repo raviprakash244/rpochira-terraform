@@ -234,6 +234,8 @@ resource "aws_autoscaling_group" "couchbase_data" {
     version = "$Latest"
   }
 
+  availability_zones = var.availability_zones
+
   tag {
       key                 = "Name"
       value               = "asg-cb-data"
