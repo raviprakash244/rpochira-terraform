@@ -418,7 +418,7 @@ def get_ebs_volumes_with_tag(tag_key, tag_value):
                 },
                 {
                     'Name': 'Status',
-                    'Values': 'available'
+                    'Values': ['available']
                 }
             ]
         )

@@ -296,6 +296,7 @@ resource "aws_ebs_volume" "data_ebs" {
   tags = { 
     AvailabilityZone = each.key
     AsgName  = local.asg_name
+    Status   = "available"
   }
 }
 
