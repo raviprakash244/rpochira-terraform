@@ -265,6 +265,7 @@ resource "aws_network_interface" "data_eni" {
     Subnet               = local.all_subnet_ids[local.subnet_index[count.index]]
     UniqueTag            = "data_${count.index}"
     AutoscaleGroup       = local.asg_name
+    NodeStatus           = "available"
   }
 }
 
