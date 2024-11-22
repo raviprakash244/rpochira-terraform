@@ -251,7 +251,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [tags]
+    ignore_changes = [all_tags]
   }
 
   instance_refresh {
@@ -279,7 +279,7 @@ resource "aws_network_interface" "data_eni" {
   }
 
   lifecycle {
-    ignore_changes = [tags]
+    ignore_changes = [all_tags]
   }
 
 }
@@ -306,7 +306,7 @@ resource "aws_ebs_volume" "data_ebs" {
   }
 
   lifecycle {
-    ignore_changes = [tags]
+    ignore_changes = [all_tags]
   }
 }
 
