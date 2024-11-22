@@ -129,7 +129,7 @@ def handle_instance_termination(auto_scaling_group_name, instance_id, event):
     tags_others = [
         {
             'Key': 'Instance',
-            'Value': ec2_id
+            'Value': instance_id
         },
         {
             'Key': 'Status',
@@ -162,7 +162,7 @@ def detach_ebs_volume(instance_id, volume_id):
         # ]
 
         # tag_ebs(volume_id, tags_others)
-
+        logger.info(f"Successfully detached EBS volume {volume_id} from instance {instance_id}")
         return response
 
     except Exception as e:
@@ -183,6 +183,7 @@ def detach_eni(instance_id, eni_id):
             }
         ]
 
+        logger.info(f"Successfully detached ENI  {eni_id} from instance {instance_id}")
         tag_eni(instance_id, tags_others)
 
         return response
