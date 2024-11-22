@@ -336,7 +336,7 @@ resource "aws_iam_role_policy" "example_lifecycle_policy" {
 EOF
 }
 
-resource "aws_autoscaling_lifecycle_hook" "example_hook" {
+resource "aws_autoscaling_lifecycle_hook" "data_launch_hook" {
   autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
   name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
@@ -347,6 +347,16 @@ resource "aws_autoscaling_lifecycle_hook" "example_hook" {
   role_arn                = aws_iam_role.example_lifecycle_role.arn
 }
 
+resource "aws_autoscaling_lifecycle_hook" "data_termination_hook" {
+  autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
+  name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}"
+  lifecycle_transition   = "autoscaling:EC2_INSTANCE_TERMINATING"
+  default_result         = "CONTINUE"
+  heartbeat_timeout      = 120
+
+  notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
+  role_arn                = aws_iam_role.example_lifecycle_role.arn
+}
 
 output "enis" {
   description = "The list of subnet IDs"
