@@ -245,6 +245,8 @@ def unlock_asg(asg_name):
         raise Exception(f"Error locking autoscaling group.")
 
 def asg_status(asg_name):
+    fraction = random.uniform(0, 10)
+    time.sleep(fraction)
     tags = read_asg_tags(asg_name)
     logger.info(f"Current ASG tags: {tags}")
     asg_status = "free"
@@ -252,7 +254,7 @@ def asg_status(asg_name):
         if tag["Key"] == "asg_lock":
             asg_status = tag.get("Value")
         break
-
+        
     logger.info(f"Current asg status: {asg_status}")
     return asg_status
 
@@ -719,3 +721,5 @@ def tag_asg(asg_name, tags):
         print(f"Tags successfully added to Auto Scaling group {asg_name}.")
     except Exception as e:
         raise Exception(f"Error adding tags to Auto Scaling group {asg_name}. {e}")
+
+ 
