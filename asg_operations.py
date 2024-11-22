@@ -86,6 +86,13 @@ def handle_autoscale(auto_scaling_group_name, instance_id, event):
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
     instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id, instance_status)
     logger.info(f"Instance details: {instance_details}")
+    
+    if len(instance_details) == 0:
+        return {
+            "statusCode": 200,
+            "body": f"No action is required."
+        }
+        
     instance_details = instance_details[0]
     subnet_id = instance_details.get("subnet_id")
     subnets = get_subnets(auto_scaling_group_name, subnet_id)

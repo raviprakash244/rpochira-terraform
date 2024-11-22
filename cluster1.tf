@@ -152,7 +152,7 @@ resource "aws_security_group" "ec2_sg" {
 
 variable "instance_count" {
   type    = number
-  default = 6
+  default = 3
 }
 
 variable "ami_id" {
@@ -196,6 +196,12 @@ locals {
   all_subnet_ids = local.subnet_ids
   subnet_index   = [for i in range(var.instance_count) : i % length(local.all_subnet_ids)]
 }
+
+locals {
+  all_azs = var.availability_zones
+  az_index   = [for i in range(var.instance_count) : i % length(local.all_azs)]
+}
+
 
 resource "aws_launch_template" "couchbase_data" {
   name          = "couchbase-data-launch-template"
@@ -293,7 +299,8 @@ resource "null_resource" "eni_delay" {
 }
 
 resource "aws_ebs_volume" "data_ebs" {
-  for_each = toset(var.availability_zones) 
+  count             = local.all_azs
+  subnet_id         = var.all_azs[local.az_index[count.index]]
 
   availability_zone = each.key  
   size              = 8         
