@@ -198,7 +198,7 @@ locals {
 }
 
 locals {
-  all_azs = var.availability_zones
+  all_azs = ["us-east-1a", "us-east-1b", "us-east-1c"] 
   az_index   = [for i in range(var.instance_count) : i % length(local.all_azs)]
 }
 
@@ -299,7 +299,7 @@ resource "null_resource" "eni_delay" {
 }
 
 resource "aws_ebs_volume" "data_ebs" {
-  count             = local.all_azs
+  count             = local.instance_count
   subnet_id         = var.all_azs[local.az_index[count.index]]
 
   availability_zone = each.key  
