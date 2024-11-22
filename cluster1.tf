@@ -251,10 +251,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
 
   lifecycle {
     create_before_destroy = true
-  }
-
-  lifecycle {
-    ignore_changes = [tags]
+    ignore_changes = [tag]
   }
 
   instance_refresh {
