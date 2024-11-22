@@ -137,8 +137,8 @@ def handle_instance_termination(auto_scaling_group_name, instance_id, event):
         }
     ]
 
-    tag_eni(eni_id, tags_others)
-    tag_ebs(volume_id, tags_others)
+    tag_eni(instance_resources.get("eni_id"), tags_others)
+    tag_ebs(instance_resources.get("ebs_id"), tags_others)
     
     response = handle__new_provision(event)
     complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
