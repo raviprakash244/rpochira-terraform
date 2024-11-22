@@ -2,6 +2,8 @@ import boto3
 import json
 import logging
 from collections import defaultdict
+import time
+import random
 
 ec2_client = boto3.client('ec2')
 autoscaling_client = boto3.client('autoscaling')
@@ -80,6 +82,7 @@ def handle_autoscale(auto_scaling_group_name, instance_id, event):
     instance_details = instance_details[0]
     subnet_id = instance_details.get("subnet_id")
     subnets = get_subnets(auto_scaling_group_name, subnet_id)
+
     if not subnets or len(subnets) == 0:
         logger.info("This seems to be ASG operation for instance refresh. This gets handled during termination of other instance.")
         if lifecycle_transition == "autoscaling:EC2_INSTANCE_LAUNCHING":
@@ -126,8 +129,10 @@ def handle_instance_termination(auto_scaling_group_name, instance_id, event):
     tag_eni(eni_id, tags_others)
     tag_ebs(volume_id, tags_others)
     
-    handle__new_provision(event)
+    response = handle__new_provision(event)
     complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
+
+    return response
 
 def detach_ebs_volume(instance_id, volume_id):
     ec2_client = boto3.client('ec2')
@@ -215,6 +220,43 @@ def get_subnets(auto_scaling_group_name, subnet_id):
     else:
         return [eni for eni in networks if eni.get("subnet_id") == subnet_id]
 
+def lock_asg(asg_name):
+    initial_tag = [{ 
+        "Key" : "asg_lock",
+        "Value": "lock"
+    }]
+
+    try:
+        response = tag_asg(asg_name, initial_tag)
+        return True
+    except Exception as e:
+        raise Exception(f"Error unlocking autoscaling group.")
+
+def unlock_asg(asg_name):
+    initial_tag = [{ 
+        "Key" : "asg_lock",
+        "Value": "free"
+    }]
+
+    try:
+        response = tag_asg(asg_name, initial_tag)
+        return True
+    except Exception as e:
+        raise Exception(f"Error locking autoscaling group.")
+
+def asg_status(asg_name):
+    tags = read_asg_tags(asg_name)
+    logger.info(f"Current ASG tags: {tags}")
+    asg_status = "free"
+    for tag in tags:
+        if tag["Key"] == "asg_lock":
+            asg_status = tag.get("Value")
+        break
+
+    logger.info(f"Current asg status: {asg_status}")
+    return asg_status
+
+
 def handle__new_provision(event):
 
     lifecycle_event_Records = event.get('Records', {})    
@@ -228,7 +270,21 @@ def handle__new_provision(event):
     lifecycle_transition = lifecycle_event.get('LifecycleTransition')
     lifecycle_event = lifecycle_event.get('Event')
     lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
+    fraction = random.uniform(0, 10)
+    time.sleep(fraction)
 
+    while True:
+        fraction = random.uniform(0, 10)
+        asg_lock_status = asg_status(auto_scaling_group_name)
+        if asg_lock_status == "free":
+            lock_asg(auto_scaling_group_name)
+            break
+        else:
+            logger.info(f"Autoscaling group currently {auto_scaling_group_name} is currently locked. ")
+            time.sleep(2)
+
+    
+    time.sleep(30)
     if not lifecycle_transition:
         logger.info("New cluster provisioning request started. ")
     else:
@@ -337,11 +393,11 @@ def handle__new_provision(event):
     # if lifecycle_hook_name and auto_scaling_group_name and lifecycle_action_token:
     #     complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
     
-
+    unlock_asg(auto_scaling_group_name)
     return {
         "statusCode": 200,
-        "body": "Successfully attached all network interfaces to respective EC2 instances.  "
-    }
+        "body": "Successfully attached all devices."
+     }
 
 def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
     logger.info("Adding final tags to Auto scaling group.")
@@ -367,6 +423,12 @@ def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
                 'Key': f'ebs_{instance_id}', 
                 'Value': eni_id
             })
+        
+        asg_tags.append(
+            { 
+            "Key" : "asg_lock",
+            "Value": "unlocked"
+        })
         
     try:
         response = tag_asg(auto_scaling_group_name, asg_tags)
@@ -656,4 +718,4 @@ def tag_asg(asg_name, tags):
         autoscaling_client.create_or_update_tags(Tags=formatted_tags)
         print(f"Tags successfully added to Auto Scaling group {asg_name}.")
     except Exception as e:
-        raise Exception(f"Error adding tags to Auto Scaling group '{asg_name}': {e}")
+        raise Exception(f"Error adding tags to Auto Scaling group {asg_name}. {e}")
