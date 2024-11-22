@@ -77,8 +77,14 @@ def handle_autoscale(auto_scaling_group_name, instance_id, event):
     lifecycle_event = lifecycle_event.get('Event')
     lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
 
+    if lifecycle_transition == "autoscaling:EC2_INSTANCE_TERMINATING":
+        instance_status = "in-use"
+    else:
+        instance_status = "available"
+
+    logger.info(f"Filtering with status: {instance_status}")
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
-    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
+    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id, instance_status)
     logger.info(f"Instance details: {instance_details}")
     instance_details = instance_details[0]
     subnet_id = instance_details.get("subnet_id")
@@ -145,10 +151,20 @@ def detach_ebs_volume(instance_id, volume_id):
         response = ec2_client.detach_volume(
             VolumeId=volume_id,
             InstanceId=instance_id,
-            Force=force
+            Force=True
         )
 
+        # tags_others = [
+        #     {
+        #         'Key': 'Status',
+        #         'Value': 'available'
+        #     }
+        # ]
+
+        # tag_ebs(volume_id, tags_others)
+
         return response
+
     except Exception as e:
         raise Exception(f"Failed to detach EBS volume {volume_id} from instance {instance_id}. {e}")
 
@@ -158,8 +174,17 @@ def detach_eni(instance_id, eni_id):
     try:
         response = ec2_client.detach_network_interface(
                     AttachmentId=attachment_id,
-                    Force=force
+                    Force=True
                 )
+        tags_others = [
+            {
+                'Key': 'Status',
+                'Value': 'available'
+            }
+        ]
+
+        tag_eni(instance_id, tags_others)
+
         return response
     except Exception as e:
         raise Exception(f"Failed to detach ENI {eni_id} from instance {instance_id}. {e}")
@@ -197,7 +222,7 @@ def read_asg_tags(asg_name):
     except Exception as e:
         raise Exception(f"Error in reading tags of Autoscaling group. {e}")
 
-def get_instance_components(instance, tags):
+def get_instance_components(instance_name, tags):
     resources = {
         "subnet_id": None,
         "eni_id": None,
@@ -302,7 +327,7 @@ def handle__new_provision(event):
     logger.info(f"Available Intarfaces: {interfaces}")
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
 
-    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
+    instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id, "available")
 
     logger.info(f"Instance details are below: {instance_details}")
     if not instance_details or len(instance_details) == 0:
@@ -430,7 +455,7 @@ def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
 
         asg_tags.append ({
                 'Key': f'ebs_{instance_id}', 
-                'Value': eni_id
+                'Value': ebs_id
             })
         
         asg_tags.append(
@@ -525,7 +550,7 @@ def get_networkinterfaces(ags_name):
 
 
     
-def get_instances_in_asg(asg_name, instance_identifier):
+def get_instances_in_asg(asg_name, instance_identifier, instance_status="available"):
 
     instance_ids = []
     logger.info(f"Incoming instance: {instance_identifier}")
@@ -544,14 +569,14 @@ def get_instances_in_asg(asg_name, instance_identifier):
                         instance_ids.append(instance["InstanceId"])
         
             logger.info(f"Instance ids are: {instance_ids}")
-            instance_details = get_instance_details(instance_ids)
+            instance_details = get_instance_details(instance_ids, instance_status)
         
             return instance_details
         except Exception as e:
             print(f"Error fetching instances for ASG {asg_name}: {e}")
             return []
     
-    instance_details = get_instance_details(instance_ids)
+    instance_details = get_instance_details(instance_ids, instance_status)
 
     return instance_details
 
@@ -578,11 +603,11 @@ def filter_tags(tags, filter):
             return False
                 
         
-def get_instance_details(instance_ids):
+def get_instance_details(instance_ids, instance_status):
     try:
         filter= {
                 'Name': 'Status',
-                'Value': 'available'
+                'Value': instance_status
             }
         response = ec2_client.describe_instances(
             InstanceIds=instance_ids )
@@ -593,6 +618,7 @@ def get_instance_details(instance_ids):
             for instance in reservation.get("Instances", []):
                 tags = instance.get("Tags")
                 logger.info(f"Available tags of EC2: {tags}")
+                logger.info(f"Filters: {filter}")
                 if not filter_tags(tags, filter):
                     continue
                 else:
