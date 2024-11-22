@@ -79,6 +79,7 @@ def handle_autoscale(auto_scaling_group_name, instance_id, event):
 
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
     instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
+    logger.info(f"Instance details: {instance_details}")
     instance_details = instance_details[0]
     subnet_id = instance_details.get("subnet_id")
     subnets = get_subnets(auto_scaling_group_name, subnet_id)
@@ -89,6 +90,10 @@ def handle_autoscale(auto_scaling_group_name, instance_id, event):
             complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
         else:
             handle_instance_termination(auto_scaling_group_name, instance_id, event)
+        return {
+            "statusCode": 200,
+            "body": f"Launching opeation is completed for instance {instance_id}"
+        }
     else:
         handle__new_provision(event)
 
@@ -523,9 +528,9 @@ def get_networkinterfaces(ags_name):
 def get_instances_in_asg(asg_name, instance_identifier):
 
     instance_ids = []
-
+    logger.info(f"Incoming instance: {instance_identifier}")
     if instance_identifier:
-        instance_id.append(instance_identifier)
+        instance_ids.append(instance_identifier)
     else:
         try:
             response = autoscaling_client.describe_auto_scaling_groups(
@@ -540,11 +545,15 @@ def get_instances_in_asg(asg_name, instance_identifier):
         
             logger.info(f"Instance ids are: {instance_ids}")
             instance_details = get_instance_details(instance_ids)
-
+        
             return instance_details
         except Exception as e:
             print(f"Error fetching instances for ASG {asg_name}: {e}")
             return []
+    
+    instance_details = get_instance_details(instance_ids)
+
+    return instance_details
 
 def filter_tags(tags, filter):
     tag_list = []
