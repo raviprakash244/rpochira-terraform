@@ -279,7 +279,7 @@ resource "aws_network_interface" "data_eni" {
   }
 
   lifecycle {
-    ignore_changes = [all_tags]
+    ignore_changes = [tags]
   }
 
 }
@@ -306,7 +306,7 @@ resource "aws_ebs_volume" "data_ebs" {
   }
 
   lifecycle {
-    ignore_changes = [all_tags]
+    ignore_changes = [tags]
   }
 }
 
