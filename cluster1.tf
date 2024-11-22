@@ -351,7 +351,7 @@ resource "aws_autoscaling_lifecycle_hook" "data_launch_hook" {
   name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}_launch"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
   default_result         = "CONTINUE"
-  heartbeat_timeout      = 120
+  heartbeat_timeout      = 1800
 
   notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
   role_arn                = aws_iam_role.example_lifecycle_role.arn
@@ -362,7 +362,7 @@ resource "aws_autoscaling_lifecycle_hook" "data_termination_hook" {
   name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}_termination"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_TERMINATING"
   default_result         = "CONTINUE"
-  heartbeat_timeout      = 120
+  heartbeat_timeout      = 1800
 
   notification_target_arn = "arn:aws:sns:us-east-1:911167901101:asg_launch"
   role_arn                = aws_iam_role.example_lifecycle_role.arn
