@@ -299,7 +299,7 @@ resource "null_resource" "eni_delay" {
 }
 
 resource "aws_ebs_volume" "data_ebs" {
-  count             = local.instance_count
+  count             = var.instance_count
   subnet_id         = var.all_azs[local.az_index[count.index]]
 
   availability_zone = each.key  
@@ -307,7 +307,7 @@ resource "aws_ebs_volume" "data_ebs" {
   type       = "gp2"     
 
   tags = { 
-    AvailabilityZone = each.key
+    AvailabilityZone = var.all_azs[local.az_index[count.index]]
     AsgName  = local.asg_name
     Status   = "available"
   }
