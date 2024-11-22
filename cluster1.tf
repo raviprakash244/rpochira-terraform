@@ -338,7 +338,7 @@ EOF
 
 resource "aws_autoscaling_lifecycle_hook" "data_launch_hook" {
   autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
-  name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}"
+  name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}_launch"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_LAUNCHING"
   default_result         = "CONTINUE"
   heartbeat_timeout      = 120
@@ -349,7 +349,7 @@ resource "aws_autoscaling_lifecycle_hook" "data_launch_hook" {
 
 resource "aws_autoscaling_lifecycle_hook" "data_termination_hook" {
   autoscaling_group_name  = aws_autoscaling_group.couchbase_data.name  
-  name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}"
+  name                   = "asg-lifecyclehook-${aws_autoscaling_group.couchbase_data.name}_termination"
   lifecycle_transition   = "autoscaling:EC2_INSTANCE_TERMINATING"
   default_result         = "CONTINUE"
   heartbeat_timeout      = 120
