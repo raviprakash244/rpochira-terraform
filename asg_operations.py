@@ -253,8 +253,8 @@ def asg_status(asg_name):
     for tag in tags:
         if tag["Key"] == "asg_lock":
             asg_status = tag.get("Value")
-        break
-        
+            break
+
     logger.info(f"Current asg status: {asg_status}")
     return asg_status
 
@@ -298,12 +298,14 @@ def handle__new_provision(event):
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
 
     instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
-    if not instance_details:
+
+    logger.info(f"Instance details are below: {instance_details}")
+    if not instance_details or len(instance_details) == 0:
         return {
             "statusCode": 200,
             "body": f"No instances found in Auto Scaling Group to be handled: {auto_scaling_group_name}"
         }
-    logger.info(f"Instance details are below: {instance_details}")
+
     ec2_subnet_mapping = map_ec2_subnet(interfaces, instance_details)
     logger.info(f"Mapping of EC2 & Subnet: {ec2_subnet_mapping}")
 

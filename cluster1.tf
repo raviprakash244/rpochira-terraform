@@ -157,7 +157,7 @@ variable "instance_count" {
 
 variable "ami_id" {
   type    = string
-  default = "ami-0b7f046618c005372"
+  default = "ami-0b7f046618c005372a"
 }
 
 # variable "security_group" {
@@ -251,6 +251,7 @@ resource "aws_autoscaling_group" "couchbase_data" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes = [tags]
   }
 
   instance_refresh {
@@ -276,6 +277,11 @@ resource "aws_network_interface" "data_eni" {
     AutoscaleGroup       = local.asg_name
     NodeStatus           = "available"
   }
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+
 }
 
 resource "null_resource" "eni_delay" {
@@ -297,6 +303,10 @@ resource "aws_ebs_volume" "data_ebs" {
     AvailabilityZone = each.key
     AsgName  = local.asg_name
     Status   = "available"
+  }
+
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
