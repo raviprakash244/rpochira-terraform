@@ -157,7 +157,7 @@ variable "instance_count" {
 
 variable "ami_id" {
   type    = string
-  default = "ami-0b7f046618c005372a"
+  default = "ami-0b7f046618c005372"
 }
 
 # variable "security_group" {
