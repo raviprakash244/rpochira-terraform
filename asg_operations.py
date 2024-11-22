@@ -17,6 +17,8 @@ def lambda_handler(event, context):
     if len(lifecycle_event_Records) != 0:
         lifecycle_event_string = lifecycle_event_Records[0].get("Sns", {}).get("Message")
         lifecycle_event = json.loads(lifecycle_event_string)
+        lifecycle_event_copy = json.loads(lifecycle_event_string)
+        
     else:
          return {
             "statusCode": 400,
@@ -29,6 +31,8 @@ def lambda_handler(event, context):
     instance_id = lifecycle_event.get('EC2InstanceId')
     lifecycle_transition = lifecycle_event.get('LifecycleTransition')
     lifecycle_event = lifecycle_event.get('Event')
+    lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
+
 
     if not auto_scaling_group_name:
         return {
@@ -39,17 +43,170 @@ def lambda_handler(event, context):
     if lifecycle_event == "autoscaling:TEST_NOTIFICATION" and not lifecycle_transition:
         return handle__new_provision(event)
     else:
-        return handle_autoscale(auto_scaling_group_name, instance_id)
+        return handle_autoscale(auto_scaling_group_name, instance_id, event)
 
 
-def handle_autoscale(auto_scaling_group_name, instance_id):
+def complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_action_token, result="CONTINUE"):
+    autoscaling_client = boto3.client('autoscaling')
+
+    try:
+        response = autoscaling_client.complete_lifecycle_action(
+            AutoScalingGroupName=asg_name,
+            LifecycleHookName=lifecycle_hook_name,
+            LifecycleActionToken=lifecycle_action_token,
+            LifecycleActionResult=result
+        )
+        print("Lifecycle action completed successfully:", response)
+    except Exception as e:
+        print("Error completing lifecycle action:", str(e))
+
+
+
+def handle_autoscale(auto_scaling_group_name, instance_id, event):
+    lifecycle_event_Records = event.get('Records', {})    
+    lifecycle_event_string = lifecycle_event_Records[0].get("Sns", {}).get("Message")
+    lifecycle_event = json.loads(lifecycle_event_string)
+    lifecycle_event_copy = json.loads(lifecycle_event_string)
+
+    lifecycle_action_token = lifecycle_event.get('LifecycleActionToken')
+    auto_scaling_group_name = lifecycle_event.get('AutoScalingGroupName')
+    instance_id = lifecycle_event.get('EC2InstanceId')
+    lifecycle_transition = lifecycle_event.get('LifecycleTransition')
+    lifecycle_event = lifecycle_event.get('Event')
+    lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
+
     logger.info(f"Fetching the information of all EC2 instances created as part of Autoscaling group: {auto_scaling_group_name}")
     instance_details = get_instances_in_asg(auto_scaling_group_name, instance_id)
     instance_details = instance_details[0]
     subnet_id = instance_details.get("subnet_id")
-    # Find available interfaces.
     subnets = get_subnets(auto_scaling_group_name, subnet_id)
-    ebs_vols = get_ebs_volumes_with_tag("AsgName", auto_scaling_group_name)
+    if not subnets or len(subnets) == 0:
+        logger.info("This seems to be ASG operation for instance refresh. This gets handled during termination of other instance.")
+        if lifecycle_transition == "autoscaling:EC2_INSTANCE_LAUNCHING":
+            complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
+        else:
+            handle_instance_termination(auto_scaling_group_name, instance_id, event)
+    else:
+        handle__new_provision(event)
+
+
+def handle_instance_termination(auto_scaling_group_name, instance_id, event):
+    tags = read_asg_tags(auto_scaling_group_name)
+    instance_resources = get_instance_components(instance_id, tags)
+
+    lifecycle_event_Records = event.get('Records', {})    
+    lifecycle_event_string = lifecycle_event_Records[0].get("Sns", {}).get("Message")
+    lifecycle_event = json.loads(lifecycle_event_string)
+    lifecycle_event_copy = json.loads(lifecycle_event_string)
+
+    lifecycle_action_token = lifecycle_event.get('LifecycleActionToken')
+    auto_scaling_group_name = lifecycle_event.get('AutoScalingGroupName')
+    instance_id = lifecycle_event.get('EC2InstanceId')
+    lifecycle_transition = lifecycle_event.get('LifecycleTransition')
+    lifecycle_event = lifecycle_event.get('Event')
+    lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
+
+    if instance_resources.get("ebs_id"):
+        detach_ebs_volume(instance_id, instance_resources.get("ebs_id"))
+    
+    if instance_resources.get("eni_id"):
+        detach_eni(instance_id, instance_resources.get("eni_id"))
+
+    tags_others = [
+        {
+            'Key': 'Instance',
+            'Value': ec2_id
+        },
+        {
+            'Key': 'Status',
+            'Value': 'available'
+        }
+    ]
+
+    tag_eni(eni_id, tags_others)
+    tag_ebs(volume_id, tags_others)
+    
+    handle__new_provision(event)
+    complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
+
+def detach_ebs_volume(instance_id, volume_id):
+    ec2_client = boto3.client('ec2')
+    try:
+        response = ec2_client.detach_volume(
+            VolumeId=volume_id,
+            InstanceId=instance_id,
+            Force=force
+        )
+
+        return response
+    except Exception as e:
+        raise Exception(f"Failed to detach EBS volume {volume_id} from instance {instance_id}. {e}")
+
+def detach_eni(instance_id, eni_id):
+
+    attachment_id = get_attachment_id_from_eni(eni_id)
+    try:
+        response = ec2_client.detach_network_interface(
+                    AttachmentId=attachment_id,
+                    Force=force
+                )
+        return response
+    except Exception as e:
+        raise Exception(f"Failed to detach ENI {eni_id} from instance {instance_id}. {e}")
+
+def get_attachment_id_from_eni(eni_id):
+    ec2_client = boto3.client('ec2')
+
+    try:
+        response = ec2_client.describe_network_interfaces(
+            NetworkInterfaceIds=[eni_id]
+        ) 
+
+        network_interface = response["NetworkInterfaces"][0]
+        attachment = network_interface.get("Attachment")
+
+        if attachment:
+            attachment_id = attachment.get("AttachmentId")
+            return attachment_id
+        else:
+            logger.info(f"No Attachment id found. ENI {eni_id} is not attached to any instance.")
+            return None
+    except Exception as e:
+        raise Exception(f"Failed to read ENI for attachment id {e}")
+
+def read_asg_tags(asg_name):
+    client = boto3.client('autoscaling')
+    try:
+        response = client.describe_auto_scaling_groups(
+                AutoScalingGroupNames=[asg_name])
+        asg_details = response.get('AutoScalingGroups', [])
+        if not asg_details:
+            raise Exception(f"No Auto Scaling Group found with the name '{asg_name}'")
+        tags = asg_details[0].get('Tags', [])
+        return tags 
+    except Exception as e:
+        raise Exception(f"Error in reading tags of Autoscaling group. {e}")
+
+def get_instance_components(instance, tags):
+    resources = {
+        "subnet_id": None,
+        "eni_id": None,
+        "ebs_id": None
+    }
+
+    for tag in tags:
+        key = tag.get("Key")
+        value = tag.get("Value")
+        
+        if key == f"subnet_{instance_name}":
+            resources["subnet_id"] = value
+        elif key == f"eni_{instance_name}":
+            resources["eni_id"] = value
+        elif key == f"ebs_{instance_name}":
+            resources["ebs_id"] = value
+
+    return resources
+
 
 def get_subnets(auto_scaling_group_name, subnet_id):
     networks = get_networkinterfaces(auto_scaling_group_name)
@@ -63,12 +220,14 @@ def handle__new_provision(event):
     lifecycle_event_Records = event.get('Records', {})    
     lifecycle_event_string = lifecycle_event_Records[0].get("Sns", {}).get("Message")
     lifecycle_event = json.loads(lifecycle_event_string)
+    lifecycle_event_copy = json.loads(lifecycle_event_string)
 
     lifecycle_action_token = lifecycle_event.get('LifecycleActionToken')
     auto_scaling_group_name = lifecycle_event.get('AutoScalingGroupName')
     instance_id = lifecycle_event.get('EC2InstanceId')
     lifecycle_transition = lifecycle_event.get('LifecycleTransition')
     lifecycle_event = lifecycle_event.get('Event')
+    lifecycle_hook_name = lifecycle_event_copy.get('LifecycleHookName')
 
     if not lifecycle_transition:
         logger.info("New cluster provisioning request started. ")
@@ -149,8 +308,7 @@ def handle__new_provision(event):
                 {
                     'Key': 'Status',
                     'Value': 'in-use'
-                },
-
+                }
             ]
 
             tag_eni(eni_id, tags_others)
@@ -168,15 +326,17 @@ def handle__new_provision(event):
                     "statusCode": 400,
                     "body": f"Error in attaching interface {eni_id} to {ec2_id}. {e}"
                 }
-    ec2_subnet_mapping = [{"InstanceId": "i-0032376f9dd691231", "SubnetId": "subnet-0318cab7cb2d592bf", "AssignedENI": "eni-03366751ca0028e39", "availability_zone": "us-east-1a", "AssignedVolumeId": "vol-01a9ceea039565b23"}, {"InstanceId": "i-08f921191e3593c98", "SubnetId": "subnet-0e7507f97be5ff02e", "AssignedENI": "eni-0a416220ab0878689", "availability_zone": "us-east-1b", "AssignedVolumeId": "vol-027bace9781b99fa1"}, {"InstanceId": "i-0236c75d140a152a0", "SubnetId": "subnet-07cbfd871c1f80536", "AssignedENI": "eni-0e58d143efde95acf", "availability_zone": "us-east-1c", "AssignedVolumeId": "vol-0003761e06906ee6f"}]
-    auto_scaling_group_name = "asg-expert-guinea"
     try:
         response = add_final_tags(auto_scaling_group_name, ec2_subnet_mapping)
     except Exception as e:
         return {
                 "statusCode": 400,
-                "body": e
+                "body": f"Failed to add final tags to autoscaling group. {e}"
             }
+    
+    # if lifecycle_hook_name and auto_scaling_group_name and lifecycle_action_token:
+    #     complete_lifecycle_action(auto_scaling_group_name, lifecycle_hook_name, lifecycle_action_token)
+    
 
     return {
         "statusCode": 200,
@@ -210,6 +370,7 @@ def add_final_tags(auto_scaling_group_name, ec2_subnet_mapping):
         
     try:
         response = tag_asg(auto_scaling_group_name, asg_tags)
+        return response
     except Exception as e:
         raise Exception(f"Error  in tagging Autoscaling group with final tags {e}")
 
@@ -493,6 +654,6 @@ def tag_asg(asg_name, tags):
     
     try:
         autoscaling_client.create_or_update_tags(Tags=formatted_tags)
-        print(f"Tags successfully added to Auto Scaling group '{asg_name}'.")
+        print(f"Tags successfully added to Auto Scaling group {asg_name}.")
     except Exception as e:
         raise Exception(f"Error adding tags to Auto Scaling group '{asg_name}': {e}")
