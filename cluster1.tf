@@ -152,7 +152,7 @@ resource "aws_security_group" "ec2_sg" {
 
 variable "instance_count" {
   type    = number
-  default = 3
+  default = 6
 }
 
 variable "ami_id" {
@@ -196,12 +196,6 @@ locals {
   all_subnet_ids = local.subnet_ids
   subnet_index   = [for i in range(var.instance_count) : i % length(local.all_subnet_ids)]
 }
-
-locals {
-  all_azs = ["us-east-1a", "us-east-1b", "us-east-1c"] 
-  az_index   = [for i in range(var.instance_count) : i % length(local.all_azs)]
-}
-
 
 resource "aws_launch_template" "couchbase_data" {
   name          = "couchbase-data-launch-template"
@@ -299,15 +293,14 @@ resource "null_resource" "eni_delay" {
 }
 
 resource "aws_ebs_volume" "data_ebs" {
-  count             = var.instance_count
-  subnet_id         = var.all_azs[local.az_index[count.index]]
+  for_each = toset(var.availability_zones) 
 
   availability_zone = each.key  
   size              = 8         
   type       = "gp2"     
 
   tags = { 
-    AvailabilityZone = var.all_azs[local.az_index[count.index]]
+    AvailabilityZone = each.key
     AsgName  = local.asg_name
     Status   = "available"
   }
