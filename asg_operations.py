@@ -62,6 +62,72 @@ def complete_lifecycle_action(asg_name, lifecycle_hook_name, lifecycle_action_to
     except Exception as e:
         print("Error completing lifecycle action:", str(e))
 
+def handle_autoscale(auto_scaling_group_name, instance_id, event):
+    logger.info(f"Handling autoscale for instance: {instance_id} in ASG: {auto_scaling_group_name}")
+
+    # Step 1: Get Availability Zone (AZ) of the instance
+    instance_details = get_instance_details([instance_id], "available")
+    
+    if not instance_details or len(instance_details) == 0:
+        logger.error(f"Instance {instance_id} not found or not in available state.")
+        return {"statusCode": 400, "body": f"Instance {instance_id} not found."}
+    
+    instance_az = instance_details[0].get("AvailabilityZone")
+    logger.info(f"Instance {instance_id} is in Availability Zone: {instance_az}")
+
+    # Step 2: Get Available ENIs & EBS Volumes in the AZ
+    while True:
+        available_ebs = get_ebs_volumes_with_tag("AsgName", auto_scaling_group_name)
+        available_eni = get_networkinterfaces(auto_scaling_group_name)
+
+        # Filter based on AZ
+        available_ebs = [ebs for ebs in available_ebs if ebs["AvailabilityZone"] == instance_az]
+        available_eni = [eni for eni in available_eni if eni["availability_zone"] == instance_az and eni["status"] == "available"]
+
+        if available_ebs and available_eni:
+            break  # Resources found, proceed to attachment
+        else:
+            logger.info(f"No available EBS or ENI in AZ {instance_az}. Waiting...")
+            time.sleep(5)  # Wait before checking again
+
+    # Step 3: Attach First Available ENI to the Instance
+    eni_id = available_eni[0]["eni_id"]
+    logger.info(f"Attaching ENI {eni_id} to instance {instance_id}")
+
+    try:
+        response = ec2_client.attach_network_interface(
+            NetworkInterfaceId=eni_id,
+            InstanceId=instance_id,
+            DeviceIndex=1
+        )
+        logger.info(f"Successfully attached ENI {eni_id} to {instance_id}.")
+    except Exception as e:
+        logger.error(f"Failed to attach ENI {eni_id} to {instance_id}. Error: {e}")
+        return {"statusCode": 500, "body": f"Error attaching ENI {eni_id} to {instance_id}. {e}"}
+
+    # Step 4: Attach First Available EBS to the Instance
+    volume_id = available_ebs[0]["VolumeId"]
+    logger.info(f"Attaching EBS {volume_id} to instance {instance_id}")
+
+    try:
+        response = attach_ebs_volumes_to_ec2(instance_id, volume_id)
+        logger.info(f"Successfully attached EBS {volume_id} to {instance_id}.")
+    except Exception as e:
+        logger.error(f"Failed to attach EBS {volume_id} to {instance_id}. Error: {e}")
+        return {"statusCode": 500, "body": f"Error attaching EBS {volume_id} to {instance_id}. {e}"}
+
+    # Step 5: Tag the ENI & EBS as "in-use"
+    tags = [
+        {"Key": "Instance", "Value": instance_id},
+        {"Key": "AsgName", "Value": auto_scaling_group_name},
+        {"Key": "Status", "Value": "in-use"}
+    ]
+    tag_eni(eni_id, tags)
+    tag_ebs(volume_id, tags)
+
+    logger.info(f"Successfully tagged ENI {eni_id} and EBS {volume_id} as in-use.")
+
+    return {"statusCode": 200, "body": f"Successfully attached ENI {eni_id} and EBS {volume_id} to instance {instance_id}."}
 
 
 def handle_autoscale(auto_scaling_group_name, instance_id, event):
