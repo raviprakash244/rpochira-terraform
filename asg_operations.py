@@ -11,6 +11,40 @@ autoscaling_client = boto3.client('autoscaling')
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+def update_asg_tags(auto_scaling_group_name, old_instance_id, new_instance_id, eni_id, ebs_id, subnet_id):
+    logger.info(f"Updating ASG {auto_scaling_group_name} tags. Replacing {old_instance_id} with {new_instance_id}")
+
+    autoscaling_client = boto3.client('autoscaling')
+
+    # Step 1: Remove old instance tags
+    delete_tags = [
+        {"Key": f"subnet_{old_instance_id}"},
+        {"Key": f"eni_{old_instance_id}"},
+        {"Key": f"ebs_{old_instance_id}"}
+    ]
+    try:
+        autoscaling_client.delete_tags(
+            Tags=[{"ResourceId": auto_scaling_group_name, "ResourceType": "auto-scaling-group", **tag} for tag in delete_tags]
+        )
+        logger.info(f"Successfully removed old instance {old_instance_id} tags.")
+    except Exception as e:
+        logger.error(f"Error removing tags for old instance {old_instance_id}. {e}")
+
+    # Step 2: Add new instance tags
+    new_tags = [
+        {"Key": f"subnet_{new_instance_id}", "Value": subnet_id},
+        {"Key": f"eni_{new_instance_id}", "Value": eni_id},
+        {"Key": f"ebs_{new_instance_id}", "Value": ebs_id}
+    ]
+    try:
+        autoscaling_client.create_or_update_tags(
+            Tags=[{"ResourceId": auto_scaling_group_name, "ResourceType": "auto-scaling-group", "PropagateAtLaunch": True, **tag} for tag in new_tags]
+        )
+        logger.info(f"Successfully updated ASG {auto_scaling_group_name} with new instance {new_instance_id}.")
+    except Exception as e:
+        logger.error(f"Error updating ASG {auto_scaling_group_name} with new instance {new_instance_id}. {e}")
+
+
 def lambda_handler(event, context):
     logger.info(f"Event: {json.dumps(event)}")
     
